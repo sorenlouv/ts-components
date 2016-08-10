@@ -1,0 +1,34 @@
+{
+  "name": "github-deployment",
+  "version": "1.0.0",
+  "description": "Github Tradeshift Deployment",
+  "main": "app.js",
+  "dependencies": {
+    "bluebird": "^3.4.1",
+    "clipboard": "^1.5.12",
+    "firebase": "^3.2.1",
+    "js-cookie": "^2.1.2",
+    "js-yaml": "^3.6.1",
+    "lodash": "^4.14.2",
+    "react": "15.3.0",
+    "react-dom": "15.3.0"
+  },
+  "devDependencies": {
+    "babel-preset-react": "^6.11.1",
+    "babelify": "^7.3.0",
+    "browserify": "^13.1.0",
+    "express": "^4.14.0",
+    "watchify": "^3.7.0"
+  },
+  "scripts": {
+    "start": "node index.js & npm run watch-js",
+    "build-js": "browserify -t [ babelify --presets [ react ] ] src/index.js -o build/app.js",
+    "watch-js": "watchify -t [ babelify --presets [ react ] ] src/index.js -o build/app.js -dv"
+  },
+  "author": "Søren Louv-Jansen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sqren/tradeshift-deployment.git"
+  },
+  "license": "ISC"
+}
