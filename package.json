@@ -4,6 +4,7 @@
   "description": "Github Tradeshift Deployment",
   "main": "app.js",
   "dependencies": {
+    "axios": "^0.13.1",
     "bluebird": "^3.4.1",
     "clipboard": "^1.5.12",
     "firebase": "^3.2.1",
