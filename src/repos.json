@@ -39,5 +39,7 @@
   "business_analytics_etl": "business-analytics",
   "payments_cards_service": "tradeshift-payments",
   "payments_proxy": "tradeshift-payments",
-  "payments_admin": "tradeshift-payments"
+  "payments_admin": "tradeshift-payments",
+  "translation": "Translation-Service",
+  "gosmtpd": ""
 }
