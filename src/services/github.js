@@ -69,11 +69,15 @@ githubService.getPuppetVersions = function(token) {
 			let fileJson = yaml.safeLoad(fileYaml);
 			let versions = _.reduce(fileJson, function(memo, sha, key) {
 				let puppetName = key.split('::')[2];
-
-				memo.push({
-					name: repos[puppetName],
-					version: sha.includes('SNAPSHOT') ? _.last(sha.split('-')) : sha
-				});
+				let repoName = repos[puppetName];
+				if (repoName) {
+					memo.push({
+						name: repoName,
+						version: sha.includes('SNAPSHOT') ? _.last(sha.split('-')) : sha
+					});
+				} else {
+					console.warn('Repo was not found for', puppetName);
+				}
 				return memo;
 			}, []);
 
