@@ -3,6 +3,7 @@ Project for analyzing version.yaml used in Tradeshift, and assist in creating PR
 # Getting started
 ```
 npm install
+npm run build-js
 npm start
 ```
 
