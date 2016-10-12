@@ -9,13 +9,13 @@ const yaml = require('js-yaml');
 const _ = require('lodash');
 
 let githubService = {};
-let accessToken;
+const COOKIE_NAME = 'github_access_token';
 
-githubService.req = function(url, options) {
-	let config = _.defaults(options, {
+githubService.req = function (url, options) {
+	const config = _.defaults(options, {
 		url: url,
 		params: {
-			access_token: accessToken
+			access_token: githubService.getAccessToken()
 		}
 	});
 	return axios(config).then(res => {
@@ -23,106 +23,108 @@ githubService.req = function(url, options) {
 	});
 };
 
-githubService.setAccessToken = function(_accessToken) {
-	accessToken = _accessToken;
-};
-
-githubService.getAccessToken = function() {
-	const COOKIE_NAME = 'github_access_token';
-	let cookie = Cookies.get(COOKIE_NAME);
-	if (cookie){
-		return Bluebird.resolve(cookie);
-	}
-
-	firebase.initializeApp(config);
-
-	var provider = new firebase.auth.GithubAuthProvider();
-	provider.addScope('repo');
-
-	return firebase.auth().signInWithPopup(provider).then(response => {
-		let accessToken = response.credential.accessToken;
-		Cookies.set(COOKIE_NAME, accessToken, { expires: 1 });
-		return accessToken;
+githubService.setAccessToken = function (accessToken) {
+	Cookies.set(COOKIE_NAME, accessToken, {
+		expires: 1
 	});
 };
 
-githubService.getPullRequest = function(id) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + id)
-		.then(rawDiff => {
-			let diff = gitDiffParser(rawDiff);
-			let lines = diff.commits[0].files[0].lines.filter(line => line.type === 'deleted' || line.type === 'added');
-			return lines;
-		});
+githubService.getAccessToken = function () {
+	return Cookies.get(COOKIE_NAME);
 };
 
-githubService.getFile = function(path) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/' + path)
-		.then(file => {
-			return new Buffer(file.content, 'base64').toString('ascii');
-		});
+githubService.init = function () {
+	firebase.initializeApp(config);
+	firebase.auth().getRedirectResult().then(function (res) {
+		const accessToken = _.get(res, 'credential.accessToken');
+		if (accessToken) {
+			githubService.setAccessToken(accessToken);
+		}
+	});
 };
 
-githubService.getPuppetVersions = function(token) {
+githubService.onAuthStateChanged = function (cb) {
+	firebase.auth().onAuthStateChanged(cb);
+};
+
+githubService.authenticate = function () {
+	var provider = new firebase.auth.GithubAuthProvider();
+	provider.addScope('repo');
+	return firebase.auth().signInWithRedirect(provider);
+};
+
+githubService.isAccessTokenValid = function () {
+	return githubService.req('https://api.github.com/user')
+		.then(() => true)
+		.catch(() => false);
+};
+
+githubService.getPullRequest = function (id) {
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + id).then(rawDiff => {
+		let diff = gitDiffParser(rawDiff);
+		let lines = diff.commits[0].files[0].lines.filter(line => line.type === 'deleted' || line.type === 'added');
+		return lines;
+	});
+};
+
+githubService.getFile = function (path) {
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/' + path).then(file => {
+		return new Buffer(file.content, 'base64').toString('ascii');
+	});
+};
+
+githubService.getPuppetVersions = function () {
 	let path = 'hiera/versions.yaml';
-	return githubService.getFile(path, token)
-		.then(fileYaml => {
-			let fileJson = yaml.safeLoad(fileYaml);
-			let versions = _.reduce(fileJson, function(memo, sha, key) {
-				let puppetName = key.split('::')[2];
-				let repoName = repos[puppetName];
-				if (repoName) {
-					memo.push({
-						name: repoName,
-						version: sha.includes('SNAPSHOT') ? _.last(sha.split('-')) : sha
-					});
-				} else {
-					console.warn('Repo was not found for', puppetName);
-				}
-				return memo;
-			}, []);
-
-			return _.sortBy(versions, 'name');
-		});
+	return githubService.getFile(path).then(fileYaml => {
+		let fileJson = yaml.safeLoad(fileYaml);
+		let versions = _.reduce(fileJson, function (memo, sha, key) {
+			let puppetName = key.split('::')[2];
+			let repoName = repos[puppetName];
+			if (repoName) {
+				memo.push({
+					name: repoName,
+					version: sha.includes('SNAPSHOT') ? _.last(sha.split('-')) : sha
+				});
+			} else {
+				console.warn('Repo was not found for', puppetName);
+			}
+			return memo;
+		}, []);
+		return _.sortBy(versions, 'name');
+	});
 };
 
-githubService.getLatestVersion = function(repoName) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/commits')
-		.then(commits => {
-			return _.first(commits).sha;
-		});
+githubService.getLatestVersion = function (repoName) {
+	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/commits').then(commits => {
+		return _.first(commits).sha;
+	});
 };
 
-githubService.getLatestVersions = function() {
+githubService.getLatestVersions = function () {
 	return Bluebird.all(_.values(repos).map(repoName => {
-		return githubService.getLatestVersion(repoName, accessToken).then(sha => ({
+		return githubService.getLatestVersion(repoName).then(sha => ({
 			name: repoName,
 			latest: sha
 		}));
 	}));
 };
 
-githubService.getDiff = function(repoName, from, to) {
+githubService.getDiff = function (repoName, from, to) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/compare/' + from + '...' + to);
 };
 
-githubService.getShortlog = function(commits) {
-	let shortLog = _.chain(commits)
-		.groupBy('author.login')
-		.map(groupCommits => {
-			return {
-				author: _.get(_.first(groupCommits), 'commit.author.name'),
-				commits: groupCommits
-			};
-		})
-		.sortBy('author')
-		.reduce((memo, group) => {
-			let countStr = ' (' + group.commits.length + '):';
-			let commitsStr = group.commits.map(commit => '\t' + _.first(commit.commit.message.split('\n'))).join('\n');
-			memo += group.author + countStr + '\n' + commitsStr + '\n\n';
-			return memo;
-		}, '')
-		.value();
-
+githubService.getShortlog = function (commits) {
+	let shortLog = _.chain(commits).groupBy('author.login').map(groupCommits => {
+		return {
+			author: _.get(_.first(groupCommits), 'commit.author.name'),
+			commits: groupCommits
+		};
+	}).sortBy('author').reduce((memo, group) => {
+		let countStr = ' (' + group.commits.length + '):';
+		let commitsStr = group.commits.map(commit => '\t' + _.first(commit.commit.message.split('\n'))).join('\n');
+		memo += group.author + countStr + '\n' + commitsStr + '\n\n';
+		return memo;
+	}, '').value();
 	return shortLog;
 };
 

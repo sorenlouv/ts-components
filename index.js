@@ -1,7 +1,6 @@
 var express = require('express');
 var app = express();
-app.use(express.static('src'));
-app.use('/build', express.static('build'));
+app.use(express.static('docs'));
 
 var server = require('http').Server(app);
 var PORT = 3000;

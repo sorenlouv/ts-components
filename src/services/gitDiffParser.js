@@ -1,3 +1,5 @@
+/*eslint-disable */
+
 var Parser, exports;
 
 Parser = (function() {

@@ -1,37 +1,43 @@
 {
-    "name": "github-deployment",
-    "version": "1.0.0",
-    "description": "Github Tradeshift Deployment",
-    "main": "app.js",
-    "dependencies": {
-        "axios": "0.13.1",
-        "bluebird": "3.4.1",
-        "clipboard": "1.5.12",
-        "firebase": "3.2.1",
-        "js-cookie": "2.1.2",
-        "js-yaml": "3.6.1",
-        "lodash": "4.15.0",
-        "react": "15.3.0",
-        "react-dom": "15.3.0"
-    },
-    "devDependencies": {
-        "babel-preset-es2015": "6.13.2",
-        "babel-preset-react": "6.11.1",
-        "babelify": "7.3.0",
-        "browserify": "13.1.0",
-        "express": "4.14.0",
-        "uglify-js": "2.7.0",
-        "watchify": "3.7.0"
-    },
-    "scripts": {
-        "start": "node index.js & npm run watch-js",
-        "build-js": "browserify -t [ babelify --presets [ react es2015 ] ] src/index.js | uglifyjs > build/app.js",
-        "watch-js": "watchify -t [ babelify --presets [ react es2015 ] ] src/index.js -o build/app.js -dv"
-    },
-    "author": "Søren Louv-Jansen",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/sqren/tradeshift-deployment.git"
-    },
-    "license": "ISC"
+  "name": "github-deployment",
+  "version": "1.0.0",
+  "description": "Github Tradeshift Deployment",
+  "main": "app.js",
+  "dependencies": {
+    "axios": "0.15.0",
+    "bluebird": "3.4.6",
+    "clipboard": "1.5.12",
+    "firebase": "3.4.1",
+    "js-cookie": "2.1.3",
+    "js-yaml": "3.6.1",
+    "lodash": "4.16.4",
+    "react": "15.3.2",
+    "react-dom": "15.3.2"
+  },
+  "devDependencies": {
+    "babel-preset-es2015": "6.16.0",
+    "babel-preset-react": "6.16.0",
+    "babelify": "7.3.0",
+    "browserify": "13.1.0",
+    "eslint-config-standard": "6.2.0",
+    "eslint-config-standard-jsx": "3.2.0",
+    "eslint-plugin-promise": "3.0.0",
+    "eslint-plugin-react": "6.4.1",
+    "eslint-plugin-standard": "2.0.1",
+    "express": "4.14.0",
+    "uglify-js": "2.7.3",
+    "watchify": "3.7.0"
+  },
+  "scripts": {
+    "start": "node index.js & npm run watch-js",
+    "lint": "eslint ./src --fix",
+    "build-js": "browserify -t [ babelify --presets [ react es2015 ] ] src/index.jsx | uglifyjs > docs/app.js",
+    "watch-js": "watchify -t [ babelify --presets [ react es2015 ] ] src/index.jsx -o docs/app.js -dv"
+  },
+  "author": "Søren Louv-Jansen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sqren/tradeshift-deployment.git"
+  },
+  "license": "ISC"
 }
