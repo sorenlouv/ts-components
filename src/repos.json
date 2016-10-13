@@ -4,7 +4,7 @@
   "tradeshift_v4_apps_server": "Apps",
   "conversions": "Backend-Conversions",
   "tradeshift_paypalipn": "Backend-Payment",
-  // "tradeshift_backend": "Backend-Service",
+  "tradeshift_backend": "Backend-Service",
   "businesseventservice": "BusinessEventHandler",
   "emailincomingservice": "Email-Incoming-Service",
   "frontend": "Frontend",

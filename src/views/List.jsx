@@ -4,22 +4,6 @@
 	import _ from 'lodash';
 	import Clipboard from 'clipboard';
 
-	function decorateWithDiffs (puppetVersions) {
-		let promises = puppetVersions.map(repo => {
-			return githubService.getDiff(repo.name, repo.version, 'master')
-			.then(diff => {
-				repo.diff = diff;
-				return repo;
-			})
-			.catch(e => {
-				console.error('Error getting diff', repo.name);
-				return repo;
-			});
-		});
-
-		return Bluebird.all(promises);
-	}
-
 	export default class App extends Component {
 		constructor (props) {
 			super(props);
@@ -50,7 +34,6 @@
 
 		getPuppetVersions () {
 			return githubService.getPuppetVersions()
-				.then(puppetVersions => decorateWithDiffs(puppetVersions))
 				.then(puppetVersions => this.setState({puppetVersions}))
 				.catch(error => console.log(error));
 		}
@@ -91,7 +74,7 @@
 				.map((repo, i) => {
 					return <div key={i}>
 						<button type='button' className='btn-copy btn btn-primary btn-sm' data-clipboard-text={githubService.getShortlog(repo.diff.commits)}>Copy</button>
-						{repo.name} <a href={repo.diff.html_url}><span className='badge'>{repo.diff.ahead_by}</span></a>
+						{repo.name} <a href={repo.diff.html_url}><span className='badge' title={repo.diff.ahead_by + ' commits behind'}>{repo.diff.ahead_by}</span></a>
 					</div>;
 				});
 
@@ -99,7 +82,7 @@
 				.filter(isUpdated)
 				.filter(byQuery)
 				.map((repo, i) => {
-					return <li key={i}>{repo.name}</li>;
+					return <li key={i}>{repo.name} {repo.error ? <span className='glyphicon glyphicon-exclamation-sign' title={repo.error.message}></span> : null}</li>;
 				});
 
 			return (

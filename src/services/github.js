@@ -73,44 +73,94 @@ githubService.getFile = function (path) {
 	});
 };
 
+githubService.getRepoName = function(puppetKey) {
+	const puppetName = puppetKey.split('::')[2];
+	return repos[puppetName];
+};
+
+githubService.getSha = function(repoName, lineValue) {
+	const isTag = /^\d+(\.\d+)+$/.test(lineValue);
+	if (!isTag) {
+		return Bluebird.resolve(lineValue.includes('SNAPSHOT') ? _.last(lineValue.split('-')) : lineValue);
+	}
+
+	return githubService.getShaByTag(repoName, 'v' + lineValue);
+};
+
+githubService.getShaByTag = function(repoName, tag) {
+	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/git/refs/tags/' + tag)
+		.then(res => res.object.sha)
+		.catch(err => {
+			switch(_.get(err, 'response.status')) {
+				case 404:
+					throw new Error(`The tag "${tag}" for ${repoName} does not exist`);
+				default:
+					throw err;
+			}
+		})
+};
+
 githubService.getPuppetVersions = function () {
 	let path = 'hiera/versions.yaml';
-	return githubService.getFile(path).then(fileYaml => {
-		let fileJson = yaml.safeLoad(fileYaml);
-		let versions = _.reduce(fileJson, function (memo, sha, key) {
-			let puppetName = key.split('::')[2];
-			let repoName = repos[puppetName];
-			if (repoName) {
-				memo.push({
-					name: repoName,
-					version: sha.includes('SNAPSHOT') ? _.last(sha.split('-')) : sha
+	return githubService.getFile(path)
+		.then(fileYaml => {
+			var promises = _.map(yaml.safeLoad(fileYaml), (value, key) => {
+					return {key, value};
+				})
+				.filter(line => {
+					const repoName = githubService.getRepoName(line.key);
+					if (!repoName) {
+						console.warn('Repo was not found for', line.key);
+						return false;
+					}
+					return true;
+				})
+				.map(line => {
+					const repoName = githubService.getRepoName(line.key);
+					return githubService.getSha(repoName, line.value)
+						.then(sha => {
+							return {
+								name: repoName,
+								sha: sha
+							}
+						})
+						.catch(err => {
+							return {
+								name: repoName,
+								error: err
+							}
+						});
 				});
-			} else {
-				console.warn('Repo was not found for', puppetName);
-			}
-			return memo;
-		}, []);
-		return _.sortBy(versions, 'name');
-	});
-};
 
-githubService.getLatestVersion = function (repoName) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/commits').then(commits => {
-		return _.first(commits).sha;
-	});
-};
-
-githubService.getLatestVersions = function () {
-	return Bluebird.all(_.values(repos).map(repoName => {
-		return githubService.getLatestVersion(repoName).then(sha => ({
-			name: repoName,
-			latest: sha
-		}));
-	}));
+			return Bluebird.all(promises).then(versions => {
+				return _.sortBy(versions, 'name');
+			});
+		})
+		.then(githubService.decorateWithDiffs);
 };
 
 githubService.getDiff = function (repoName, from, to) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/compare/' + from + '...' + to);
+};
+
+githubService.decorateWithDiffs = function (puppetVersions) {
+	let promises = puppetVersions.map(repo => {
+		if (!repo.sha) {
+			return Bluebird.resolve(repo);
+		}
+
+		return githubService.getDiff(repo.name, repo.sha, 'master')
+			.then(diff => {
+				repo.diff = diff;
+				return repo;
+			})
+			.catch(e => {
+				console.error('Error getting diff', repo.name, e);
+				return repo;
+			});
+	});
+
+	return Bluebird.all(promises);
 };
 
 githubService.getShortlog = function (commits) {
