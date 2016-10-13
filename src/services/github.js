@@ -114,17 +114,22 @@ githubService.getDiff = function (repoName, from, to) {
 };
 
 githubService.getShortlog = function (commits) {
-	let shortLog = _.chain(commits).groupBy('author.login').map(groupCommits => {
-		return {
-			author: _.get(_.first(groupCommits), 'commit.author.name'),
-			commits: groupCommits
-		};
-	}).sortBy('author').reduce((memo, group) => {
-		let countStr = ' (' + group.commits.length + '):';
-		let commitsStr = group.commits.map(commit => '\t' + _.first(commit.commit.message.split('\n'))).join('\n');
-		memo += group.author + countStr + '\n' + commitsStr + '\n\n';
-		return memo;
-	}, '').value();
+	let shortLog = _.chain(commits)
+		.groupBy('author.login')
+		.map(groupCommits => {
+			return {
+				author: _.get(_.first(groupCommits), 'commit.author.name'),
+				commits: groupCommits
+			};
+		})
+		.sortBy('author')
+		.reduce((memo, group) => {
+			let countStr = ' (' + group.commits.length + '):';
+			let commitsStr = group.commits.map(commit => _.repeat(' ', 6) + _.first(commit.commit.message.split('\n'))).join('\n');
+			memo += group.author + countStr + '\n' + commitsStr + '\n\n';
+			return memo;
+		}, '')
+		.value();
 	return shortLog;
 };
 
