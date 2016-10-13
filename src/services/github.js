@@ -1,4 +1,4 @@
-const gitDiffParser = require('./gitDiffParser');
+// const parseDiff = require('parse-diff');
 const axios = require('axios');
 const firebase = require('firebase');
 const config = require('../config.json');
@@ -8,20 +8,22 @@ const Bluebird = require('bluebird');
 const yaml = require('js-yaml');
 const _ = require('lodash');
 
-let githubService = {};
+const githubService = {};
 const COOKIE_NAME = 'github_access_token';
 
-githubService.req = function (url, options) {
-	const config = _.defaults(options, {
+githubService.req = _.memoize((url, options) => {
+	const opts = _.defaultsDeep(options, {
 		url: url,
 		params: {
 			access_token: githubService.getAccessToken()
 		}
 	});
-	return axios(config).then(res => {
-		return config.raw ? res : res.data;
+	return axios(opts).then(res => {
+		return opts.raw ? res : res.data;
 	});
-};
+}, (url, options) => JSON.stringify([url, options]));
+
+window.sqren = githubService.req;
 
 githubService.setAccessToken = function (accessToken) {
 	Cookies.set(COOKIE_NAME, accessToken, {
@@ -48,7 +50,7 @@ githubService.onAuthStateChanged = function (cb) {
 };
 
 githubService.authenticate = function () {
-	var provider = new firebase.auth.GithubAuthProvider();
+	const provider = new firebase.auth.GithubAuthProvider();
 	provider.addScope('repo');
 	return firebase.auth().signInWithRedirect(provider);
 };
@@ -59,26 +61,28 @@ githubService.isAccessTokenValid = function () {
 		.catch(() => false);
 };
 
-githubService.getPullRequest = function (id) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + id).then(rawDiff => {
-		let diff = gitDiffParser(rawDiff);
-		let lines = diff.commits[0].files[0].lines.filter(line => line.type === 'deleted' || line.type === 'added');
-		return lines;
-	});
-};
+// githubService.getPullRequest = function (id) {
+// 	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + id).then(rawDiff => {
+// 		return _.chain(parseDiff(rawDiff))
+// 			.filter(file => {
+// 				return file.to === 'hiera/versions.yaml';
+// 			})
+// 			.first()
+// 			.get('chunks')
+// 			.map(chunk => {
+// 				return chunk.changes
+// 					.filter(change => change.type === 'del' || change.type === 'add')
+// 					.map(change => change.content);
+// 			});
+// 	});
+// };
 
-githubService.getFile = function (path) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/' + path).then(file => {
-		return new Buffer(file.content, 'base64').toString('ascii');
-	});
-};
-
-githubService.getRepoName = function(puppetKey) {
+githubService.getRepoName = function (puppetKey) {
 	const puppetName = puppetKey.split('::')[2];
 	return repos[puppetName];
 };
 
-githubService.getSha = function(repoName, lineValue) {
+githubService.getSha = function (repoName, lineValue) {
 	const isTag = /^\d+(\.\d+)+$/.test(lineValue);
 	if (!isTag) {
 		return Bluebird.resolve(lineValue.includes('SNAPSHOT') ? _.last(lineValue.split('-')) : lineValue);
@@ -87,26 +91,33 @@ githubService.getSha = function(repoName, lineValue) {
 	return githubService.getShaByTag(repoName, 'v' + lineValue);
 };
 
-githubService.getShaByTag = function(repoName, tag) {
+githubService.getShaByTag = function (repoName, tag) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/git/refs/tags/' + tag)
 		.then(res => res.object.sha)
 		.catch(err => {
-			switch(_.get(err, 'response.status')) {
+			switch (_.get(err, 'response.status')) {
 				case 404:
 					throw new Error(`The tag "${tag}" for ${repoName} does not exist`);
 				default:
 					throw err;
 			}
-		})
+		});
 };
 
-githubService.getPuppetVersions = function () {
-	let path = 'hiera/versions.yaml';
-	return githubService.getFile(path)
+githubService.getPuppetVersions = function (ref) {
+	const options = {};
+	if (ref) {
+		_.set(options, 'params.ref', ref);
+	}
+
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/hiera/versions.yaml', options)
+		.then(file => {
+			return new Buffer(file.content, 'base64').toString('ascii');
+		})
 		.then(fileYaml => {
-			var promises = _.map(yaml.safeLoad(fileYaml), (value, key) => {
-					return {key, value};
-				})
+			const promises = _.map(yaml.safeLoad(fileYaml), (value, key) => {
+				return {key, value};
+			})
 				.filter(line => {
 					const repoName = githubService.getRepoName(line.key);
 					if (!repoName) {
@@ -122,13 +133,13 @@ githubService.getPuppetVersions = function () {
 							return {
 								name: repoName,
 								sha: sha
-							}
+							};
 						})
 						.catch(err => {
 							return {
 								name: repoName,
 								error: err
-							}
+							};
 						});
 				});
 
@@ -144,7 +155,7 @@ githubService.getDiff = function (repoName, from, to) {
 };
 
 githubService.decorateWithDiffs = function (puppetVersions) {
-	let promises = puppetVersions.map(repo => {
+	const promises = puppetVersions.map(repo => {
 		if (!repo.sha) {
 			return Bluebird.resolve(repo);
 		}
@@ -164,7 +175,7 @@ githubService.decorateWithDiffs = function (puppetVersions) {
 };
 
 githubService.getShortlog = function (commits) {
-	let shortLog = _.chain(commits)
+	const shortLog = _.chain(commits)
 		.groupBy('author.login')
 		.map(groupCommits => {
 			return {
@@ -174,8 +185,8 @@ githubService.getShortlog = function (commits) {
 		})
 		.sortBy('author')
 		.reduce((memo, group) => {
-			let countStr = ' (' + group.commits.length + '):';
-			let commitsStr = group.commits.map(commit => _.repeat(' ', 6) + _.first(commit.commit.message.split('\n'))).join('\n');
+			const countStr = ' (' + group.commits.length + '):';
+			const commitsStr = group.commits.map(commit => _.repeat(' ', 6) + _.first(commit.commit.message.split('\n'))).join('\n');
 			memo += group.author + countStr + '\n' + commitsStr + '\n\n';
 			return memo;
 		}, '')
