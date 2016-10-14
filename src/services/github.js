@@ -66,7 +66,8 @@ githubService.getRepoName = function (puppetKey) {
 githubService.getSha = function (repoName, lineValue) {
 	const isTag = /^\d+(\.\d+)+$/.test(lineValue);
 	if (!isTag) {
-		return Bluebird.resolve((lineValue.includes('SNAPSHOT') || lineValue.startsWith('ghprb-')) ? _.last(lineValue.split('-')) : lineValue);
+		const sha = _.first(lineValue.match(/\b[0-9a-f]{5,40}\b/));
+		return Bluebird.resolve(sha);
 	}
 
 	return githubService.getShaByTag(repoName, 'v' + lineValue);
