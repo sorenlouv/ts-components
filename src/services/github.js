@@ -1,4 +1,3 @@
-// const parseDiff = require('parse-diff');
 const axios = require('axios');
 const firebase = require('firebase');
 const config = require('../config.json');
@@ -12,7 +11,7 @@ const githubService = {};
 const COOKIE_NAME = 'github_access_token';
 
 githubService.req = _.memoize((url, options) => {
-	const opts = _.defaultsDeep(options, {
+	const opts = _.defaultsDeep({}, options, {
 		url: url,
 		params: {
 			access_token: githubService.getAccessToken()
@@ -22,8 +21,6 @@ githubService.req = _.memoize((url, options) => {
 		return opts.raw ? res : res.data;
 	});
 }, (url, options) => JSON.stringify([url, options]));
-
-window.sqren = githubService.req;
 
 githubService.setAccessToken = function (accessToken) {
 	Cookies.set(COOKIE_NAME, accessToken, {
@@ -61,22 +58,6 @@ githubService.isAccessTokenValid = function () {
 		.catch(() => false);
 };
 
-// githubService.getPullRequest = function (id) {
-// 	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + id).then(rawDiff => {
-// 		return _.chain(parseDiff(rawDiff))
-// 			.filter(file => {
-// 				return file.to === 'hiera/versions.yaml';
-// 			})
-// 			.first()
-// 			.get('chunks')
-// 			.map(chunk => {
-// 				return chunk.changes
-// 					.filter(change => change.type === 'del' || change.type === 'add')
-// 					.map(change => change.content);
-// 			});
-// 	});
-// };
-
 githubService.getRepoName = function (puppetKey) {
 	const puppetName = puppetKey.split('::')[2];
 	return repos[puppetName];
@@ -85,7 +66,7 @@ githubService.getRepoName = function (puppetKey) {
 githubService.getSha = function (repoName, lineValue) {
 	const isTag = /^\d+(\.\d+)+$/.test(lineValue);
 	if (!isTag) {
-		return Bluebird.resolve(lineValue.includes('SNAPSHOT') ? _.last(lineValue.split('-')) : lineValue);
+		return Bluebird.resolve((lineValue.includes('SNAPSHOT') || lineValue.startsWith('ghprb-')) ? _.last(lineValue.split('-')) : lineValue);
 	}
 
 	return githubService.getShaByTag(repoName, 'v' + lineValue);
@@ -104,43 +85,66 @@ githubService.getShaByTag = function (repoName, tag) {
 		});
 };
 
-githubService.getPuppetVersions = function (ref) {
-	const options = {};
-	if (ref) {
-		_.set(options, 'params.ref', ref);
-	}
+githubService.getPullRequest = function (number) {
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + number);
+};
 
+githubService.getVersionLines = function (ref) {
+	const options = ref ? { params: { ref: ref } } : {};
 	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/hiera/versions.yaml', options)
 		.then(file => {
-			return new Buffer(file.content, 'base64').toString('ascii');
-		})
-		.then(fileYaml => {
-			const promises = _.map(yaml.safeLoad(fileYaml), (value, key) => {
+			const fileString = new Buffer(file.content, 'base64').toString('ascii');
+			return _.map(yaml.safeLoad(fileString), (value, key) => {
 				return {key, value};
-			})
-				.filter(line => {
-					const repoName = githubService.getRepoName(line.key);
-					if (!repoName) {
-						console.warn('Repo was not found for', line.key);
-						return false;
-					}
-					return true;
+			});
+		});
+};
+
+githubService.getComponents = function (ref) {
+	return githubService.getVersionLines(ref).then(versionLines => {
+		const promises = versionLines.map(line => {
+			line.name = githubService.getRepoName(line.key);
+			if (!line.name) {
+				// console.warn('Repo was not found for', line.key);
+				return line;
+			}
+
+			return githubService.getSha(line.name, line.value)
+				.then(sha => {
+					line.sha = sha;
+					return line;
 				})
-				.map(line => {
-					const repoName = githubService.getRepoName(line.key);
-					return githubService.getSha(repoName, line.value)
-						.then(sha => {
-							return {
-								name: repoName,
-								sha: sha
-							};
-						})
-						.catch(err => {
-							return {
-								name: repoName,
-								error: err
-							};
-						});
+				.catch(err => {
+					// console.warn(`Could not get sha for ${line.name}`, err);
+					line.error = err;
+					return line;
+				});
+		});
+
+		return Bluebird.all(promises);
+	});
+};
+
+githubService.getPuppetComponents = function (ref) {
+	const filePromises = [ githubService.getComponents() ];
+
+	if (ref) {
+		filePromises.push(githubService.getComponents(ref));
+	}
+
+	return Bluebird.all(filePromises)
+		.spread((currentComponents, refComponents) => {
+			const promises = currentComponents
+				.filter(component => component.name)
+				.map(component => {
+					const refComponent = _.find(refComponents, {key: component.key});
+
+					return {
+						name: component.name,
+						error: component.error,
+						shaFrom: ref ? component.sha : _.get(refComponent, 'sha', 'master'),
+						shaTo: ref ? _.get(refComponent, 'sha', 'master') : component.sha
+					};
 				});
 
 			return Bluebird.all(promises).then(versions => {
@@ -156,17 +160,21 @@ githubService.getDiff = function (repoName, from, to) {
 
 githubService.decorateWithDiffs = function (puppetVersions) {
 	const promises = puppetVersions.map(repo => {
-		if (!repo.sha) {
+		if (!repo.shaFrom || !repo.shaTo) {
 			return Bluebird.resolve(repo);
 		}
 
-		return githubService.getDiff(repo.name, repo.sha, 'master')
+		if (repo.shaFrom === repo.shaTo) {
+			return Bluebird.resolve(repo);
+		}
+
+		return githubService.getDiff(repo.name, repo.shaFrom, repo.shaTo)
 			.then(diff => {
-				repo.diff = diff;
+				repo.diff = _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']);
 				return repo;
 			})
-			.catch(e => {
-				console.error('Error getting diff', repo.name, e);
+			.catch(err => {
+				console.error('Could not get diff', repo.name, err);
 				return repo;
 			});
 	});

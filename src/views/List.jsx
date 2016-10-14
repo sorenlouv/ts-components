@@ -7,8 +7,9 @@ export default class App extends Component {
 	constructor (props) {
 		super(props);
 		this.state = {
-			puppetVersions: [],
+			puppetComponents: [],
 			query: '',
+			pullRequest: {},
 			isAuthenticated: false
 		};
 
@@ -25,16 +26,24 @@ export default class App extends Component {
 					this.setState({
 						isAuthenticated: true
 					});
-					this.getPuppetVersions();
+
+					this.getPuppetComponents();
 				}
 			});
 		});
 	}
 
-	getPuppetVersions () {
-		return githubService.getPuppetVersions()
-			.then(puppetVersions => this.setState({puppetVersions}))
-			.catch(error => console.log(error));
+	componentDidUpdate (prevProps, prevState) {
+		if (this.state.isAuthenticated && prevState.pullRequest !== this.state.pullRequest) {
+			this.getPuppetComponents();
+		}
+	}
+
+	getPuppetComponents () {
+		const ref = _.get(this.state.pullRequest, 'head.sha');
+		return githubService.getPuppetComponents(ref)
+			.then(puppetComponents => this.setState({puppetComponents}))
+			.catch(error => console.error('Could not get getPuppetComponents', error));
 	}
 
 	onClickLogin () {
@@ -42,7 +51,29 @@ export default class App extends Component {
 	}
 
 	onQueryChange (event) {
-		this.setState({ query: event.target.value });
+		const pullRequestQuery = event.target.value;
+		if (!pullRequestQuery) {
+			this.setState({
+				query: pullRequestQuery,
+				pullRequest: {}
+			});
+			return;
+		}
+
+		this.setState({ query: pullRequestQuery });
+		githubService.getPullRequest(pullRequestQuery)
+			.then(pullRequest => {
+				this.setState({ pullRequest: pullRequest });
+			})
+			.catch(err => {
+				switch (_.get(err, 'response.status')) {
+					case 404:
+						console.warn('Pull request does not exist');
+						break;
+					default:
+						console.error('Could not get pull request', err);
+				}
+			});
 	}
 
 	render () {
@@ -54,48 +85,60 @@ export default class App extends Component {
 			);
 		}
 
-		if (_.isEmpty(this.state.puppetVersions)) {
+		if (_.isEmpty(this.state.puppetComponents)) {
 			return <div>Loading...</div>;
 		}
 
-		const query = this.state.query;
-		function byQuery (repo) {
-			return repo.name.toLowerCase().includes(query.toLowerCase());
+		function isChanged (component) {
+			return _.get(component, 'diff.ahead_by') > 0 || _.get(component, 'diff.behind_by') > 0;
 		}
 
-		function isUpdated (repo) {
-			return _.get(repo, 'diff.ahead_by') === 0 || _.isEmpty(_.get(repo, 'diff.files'));
+		function getBehindByUrl (component) {
+			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.shaTo + '...' + component.shaFrom;
 		}
 
-		const outdatedList = this.state.puppetVersions
-			.filter(_.negate(isUpdated))
-			.filter(byQuery)
-			.map((repo, i) => {
-				return <div key={i}>
-					<button type='button' className='btn-copy btn btn-primary btn-sm' data-clipboard-text={githubService.getShortlog(repo.diff.commits)}>Copy</button>
-					{repo.name} <a href={repo.diff.html_url}><span className='badge' title={repo.diff.ahead_by + ' commits behind'}>{repo.diff.ahead_by}</span></a>
-				</div>;
+		function getAheadByUrl (component) {
+			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.shaFrom + '...' + component.shaTo;
+		}
+
+		const changedComponents = this.state.puppetComponents
+			.filter(isChanged)
+			.map((component, i) => {
+				return <tr key={i}>
+					<td>{component.name}</td>
+					<td>
+						{ component.diff.ahead_by > 0 ? <a className='diff-ahead' href={getAheadByUrl(component)}>{component.diff.ahead_by} ahead</a> : null }
+						{ component.diff.behind_by > 0 ? <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a> : null }
+					</td>
+					<td>
+						{ component.diff.ahead_by > 0 ? <button type='button' className='btn-copy btn btn-primary btn-sm' data-clipboard-text={githubService.getShortlog(component.diff.commits)}>Copy</button> : null }
+					</td>
+				</tr>;
 			});
 
-		const updatedList = this.state.puppetVersions
-			.filter(isUpdated)
-			.filter(byQuery)
-			.map((repo, i) => {
-				return <li key={i}>{repo.name} {repo.error ? <span className='glyphicon glyphicon-exclamation-sign' title={repo.error.message} /> : null}</li>;
+		const unChangedComponents = this.state.puppetComponents
+			.filter(_.negate(isChanged))
+			.map((component, i) => {
+				return <li key={i}>{component.name} {component.error ? <span className='glyphicon glyphicon-exclamation-sign' title={component.error.message} /> : null}</li>;
 			});
 
 		return (
 			<div>
-				<input className='search-input' type='text' placeholder='Search' onChange={this.onQueryChange} value={this.state.query} />
+				<div>
+					<input className='search-input' type='text' placeholder='Pull request number, eg. 1323' onChange={this.onQueryChange} value={this.state.query} />
+					<span className='pull-request-info'>{ !_.isEmpty(this.state.pullRequest) ? this.state.pullRequest.title + ' by ' + this.state.pullRequest.user.login : null }</span>
+				</div>
 
 				<div className='row'>
 					<div className='col-md-6'>
-						<h3>Outdated:</h3>
-						<div>{outdatedList}</div>
+						<h3>Changes:</h3>
+						<table className='changed-components-list'>
+							<tbody>{changedComponents}</tbody>
+						</table>
 					</div>
 					<div className='col-md-6'>
-						<h3>Up-to-date:</h3>
-						<ul>{updatedList}</ul>
+						<h3>Unchanged:</h3>
+						<ul>{unChangedComponents}</ul>
 					</div>
 				</div>
 			</div>
