@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
+import { hashHistory } from 'react-router';
 import githubService from '../services/github';
 import Clipboard from 'clipboard';
+import Bluebird from 'bluebird';
 import _ from 'lodash';
 
 export default class App extends Component {
@@ -8,7 +10,7 @@ export default class App extends Component {
 		super(props);
 		this.state = {
 			puppetComponents: [],
-			query: '',
+			query: props.params.pullRequestNumber || '',
 			pullRequest: {},
 			isAuthenticated: false
 		};
@@ -40,8 +42,31 @@ export default class App extends Component {
 	}
 
 	getPuppetComponents () {
-		const ref = _.get(this.state.pullRequest, 'head.sha');
-		return githubService.getPuppetComponents(ref)
+		let promise = Bluebird.resolve();
+
+		if (this.state.query) {
+			promise = githubService.getPullRequest(this.state.query)
+				.then(pullRequest => {
+					this.setState({ pullRequest: pullRequest });
+					return pullRequest;
+				})
+				.catch(err => {
+					switch (_.get(err, 'response.status')) {
+						case 404:
+							console.warn('Pull request does not exist');
+							break;
+						default:
+							console.error('Could not get pull request', err);
+					}
+					throw err;
+				});
+		}
+
+		promise
+			.then(pullRequest => {
+				const ref = _.get(pullRequest, 'head.sha');
+				return githubService.getPuppetComponents(ref);
+			})
 			.then(puppetComponents => this.setState({puppetComponents}))
 			.catch(error => console.error('Could not get getPuppetComponents', error));
 	}
@@ -51,29 +76,14 @@ export default class App extends Component {
 	}
 
 	onQueryChange (event) {
-		const pullRequestQuery = event.target.value;
-		if (!pullRequestQuery) {
-			this.setState({
-				query: pullRequestQuery,
-				pullRequest: {}
-			});
-			return;
-		}
+		const query = event.target.value;
+		hashHistory.push(query);
 
-		this.setState({ query: pullRequestQuery });
-		githubService.getPullRequest(pullRequestQuery)
-			.then(pullRequest => {
-				this.setState({ pullRequest: pullRequest });
-			})
-			.catch(err => {
-				switch (_.get(err, 'response.status')) {
-					case 404:
-						console.warn('Pull request does not exist');
-						break;
-					default:
-						console.error('Could not get pull request', err);
-				}
-			});
+		this.setState({
+			query: query,
+			pullRequest: {},
+			puppetComponents: []
+		});
 	}
 
 	render () {
@@ -83,10 +93,6 @@ export default class App extends Component {
 					<img src='github-icon.png' width='30' /> Sign in with Github
 				</button>
 			);
-		}
-
-		if (_.isEmpty(this.state.puppetComponents)) {
-			return <div>Loading...</div>;
 		}
 
 		function isChanged (component) {
