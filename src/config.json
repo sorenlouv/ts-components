@@ -1,6 +1,7 @@
 {
-  "apiKey": "AIzaSyC1CNv25WGU-FVhmxBJJDji-qZludEoL_g",
-  "authDomain": "github-deployment.firebaseapp.com",
-  "databaseURL": "https://github-deployment.firebaseio.com",
-  "storageBucket": "github-deployment.appspot.com"
+	"apiKey": "AIzaSyC1CNv25WGU-FVhmxBJJDji-qZludEoL_g",
+	"authDomain": "github-deployment.firebaseapp.com",
+	"databaseURL": "https://github-deployment.firebaseio.com",
+	"storageBucket": "github-deployment.appspot.com",
+	"messagingSenderId": "987304340371"
 }

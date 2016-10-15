@@ -90,6 +90,10 @@ githubService.getPullRequest = function (number) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + number);
 };
 
+githubService.searchPullRequests = function (q) {
+	return githubService.req('https://api.github.com/search/issues?q=type:pr repo:Tradeshift/tradeshift-puppet ' + q);
+};
+
 githubService.getVersionLines = function (ref) {
 	const options = ref ? { params: { ref: ref } } : {};
 	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/hiera/versions.yaml', options)

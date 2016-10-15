@@ -2,20 +2,19 @@
 <html>
 	<head>
 		<title>Versions... lots of them.</title>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
-		</link>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" /></link>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<style>
-			.btn-copy {
-				margin: 5px;
+			body {
+				font-family: Helvetica, sans-serif;
 			}
 
-			.search-input {
-				width: 300px;
-				margin-top: 20px;
-				padding: 5px;
-				border-radius: 5px;
-				border: 1px solid #ddd;
+			.hidden {
+				display: none;
+			}
+
+			.btn-copy {
+				margin: 5px;
 			}
 
 			.github-login {
@@ -43,9 +42,156 @@
 			}
 
 			.pull-request-info {
-				display: inline-block;
-				margin: 6px;
+				margin: 5px 0px;
+				background: #eee;
+				padding: 10px;
+				width: 600px;
+				border: 1px solid #ccc;
+				position: relative;
 			}
+
+			/* duplicate...*/
+			.pull-request-info .number {
+				font-weight: bold;
+				margin: 0 5px 0 10px;
+			}
+
+			.pull-request-info .glyphicon {
+				float: right;
+				cursor: pointer;
+				position: absolute;
+				right: 10px;
+				top: 16px;
+			}
+
+			/* Autocomplete */
+			.react-autosuggest__container {
+			  position: relative;
+			}
+
+			.react-autosuggest__input {
+			  width: 600px;
+			  height: 30px;
+			  padding: 20px 10px;
+			  font-weight: 300;
+			  font-size: 16px;
+			  border: 1px solid #aaa;
+			  border-radius: 4px;
+			}
+
+			.react-autosuggest__input:focus {
+			  outline: none;
+			}
+
+			.react-autosuggest__container--open .react-autosuggest__input {
+			  border-bottom-left-radius: 0;
+			  border-bottom-right-radius: 0;
+			}
+
+			.react-autosuggest__suggestions-container {
+			  display: none;
+			}
+
+			.react-autosuggest__container--open .react-autosuggest__suggestions-container {
+			  display: block;
+			  position: absolute;
+			  top: 41px;
+			  width: 600px;
+			  border: 1px solid #aaa;
+			  background-color: #fff;
+			  font-family: Helvetica, sans-serif;
+			  font-weight: 300;
+			  font-size: 16px;
+			  border-bottom-left-radius: 4px;
+			  border-bottom-right-radius: 4px;
+			  z-index: 2;
+			}
+
+			.react-autosuggest__suggestions-list {
+			  margin: 0;
+			  padding: 0;
+			  list-style-type: none;
+			}
+
+			.react-autosuggest__suggestion {
+				cursor: pointer;
+				padding: 10px;
+				height: 50px;
+				overflow:hidden;
+			}
+
+			.react-autosuggest__suggestion .image {
+				width: 30px;
+				height: 30px;
+				display: inline-block;
+				vertical-align: middle;
+			}
+
+			.react-autosuggest__suggestion .image img {
+				height: 30px;
+			}
+
+			.react-autosuggest__suggestion .number {
+				display: inline-block;
+				vertical-align: middle;
+				font-weight: bold;
+				margin: 0 5px 0 10px;
+			}
+
+			.react-autosuggest__suggestion .title {
+				display: inline-block;
+				vertical-align: middle;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				width: 490px;
+			}
+
+			.react-autosuggest__suggestion:not(:first-child) {
+			  border-top: 1px solid #ddd;
+			}
+
+			.react-autosuggest__suggestion--focused {
+			  background-color: #0C7EAF;
+			  color: #fff;
+			}
+
+			.suggestion-content {
+			  display: flex;
+			  align-items: center;
+			  background-repeat: no-repeat;
+			}
+
+			.dancounsell {
+			  background-image: url(https://s3.amazonaws.com/uifaces/faces/twitter/dancounsell/48.jpg);
+			}
+
+			.ladylexy {
+			  background-image: url(https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/48.jpg);
+			}
+
+			.mtnmissy {
+			  background-image: url(https://s3.amazonaws.com/uifaces/faces/twitter/mtnmissy/48.jpg);
+			}
+
+			.steveodom {
+			  background-image: url(https://s3.amazonaws.com/uifaces/faces/twitter/steveodom/48.jpg);
+			}
+
+			.name {
+			  margin-left: 68px;
+			  line-height: 45px;
+			}
+
+			.highlight {
+			  color: #ee0000;
+			  font-weight: bold;
+			}
+
+			.react-autosuggest__suggestion--focused .highlight {
+			  color: #120000;
+			}
+
 		</style>
 	</head>
 	<body>

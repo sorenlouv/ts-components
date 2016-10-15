@@ -1,21 +1,38 @@
+import classNames from 'classnames';
 import React, {Component} from 'react';
 import { hashHistory } from 'react-router';
 import githubService from '../services/github';
+import PullRequestCompleter from './PullRequestCompleter.jsx';
 import Clipboard from 'clipboard';
 import Bluebird from 'bluebird';
 import _ from 'lodash';
+
+const SelectedPullRequest = ({pullRequest, onClickResetPullRequest}) => {
+	if (_.isEmpty(pullRequest)) {
+		return null;
+	}
+
+	return <div className='pull-request-info'>
+		<span className='image'><img src={pullRequest.user.avatar_url + '&s=30'} /></span>
+		<span className='number'>{pullRequest.number}</span>
+		<span className='title'>{pullRequest.title}</span>
+		<a onClick={onClickResetPullRequest}>
+			<span className='glyphicon glyphicon glyphicon-remove-circle' />
+		</a>
+	</div>;
+};
 
 export default class App extends Component {
 	constructor (props) {
 		super(props);
 		this.state = {
 			puppetComponents: [],
+			isLoading: true,
 			query: props.params.pullRequestNumber || '',
 			pullRequest: {},
 			isAuthenticated: false
 		};
-
-		this.onQueryChange = this.onQueryChange.bind(this);
+		this.onSelectPullRequest = this.onSelectPullRequest.bind(this);
 	}
 
 	componentDidMount () {
@@ -36,18 +53,43 @@ export default class App extends Component {
 	}
 
 	componentDidUpdate (prevProps, prevState) {
-		if (this.state.isAuthenticated && prevState.pullRequest !== this.state.pullRequest) {
+		const currentPullRequestNumber = _.get(this.state.pullRequest, 'number');
+		const prevPullRequestNumber = _.get(prevState.pullRequest, 'number');
+		if (this.state.isAuthenticated && prevPullRequestNumber !== currentPullRequestNumber) {
+			hashHistory.push(_.toString(currentPullRequestNumber));
 			this.getPuppetComponents();
 		}
 	}
 
+	onSelectPullRequest (event, { suggestion }) {
+		this.setState({
+			pullRequest: suggestion,
+			puppetComponents: [],
+			isLoading: true
+		});
+	}
+
+	onClickResetPullRequest () {
+		this.setState({
+			pullRequest: {},
+			query: ''
+		});
+	}
+
+	onChangeQuery (event, { newValue }) {
+		this.setState({
+			query: newValue
+		});
+	}
+
 	getPuppetComponents () {
 		let promise = Bluebird.resolve();
-
 		if (this.state.query) {
 			promise = githubService.getPullRequest(this.state.query)
 				.then(pullRequest => {
-					this.setState({ pullRequest: pullRequest });
+					this.setState({
+						pullRequest: pullRequest
+					});
 					return pullRequest;
 				})
 				.catch(err => {
@@ -67,23 +109,17 @@ export default class App extends Component {
 				const ref = _.get(pullRequest, 'head.sha');
 				return githubService.getPuppetComponents(ref);
 			})
-			.then(puppetComponents => this.setState({puppetComponents}))
+			.then(puppetComponents => {
+				this.setState({
+					puppetComponents: puppetComponents,
+					isLoading: false
+				});
+			})
 			.catch(error => console.error('Could not get getPuppetComponents', error));
 	}
 
 	onClickLogin () {
 		githubService.authenticate();
-	}
-
-	onQueryChange (event) {
-		const query = event.target.value;
-		hashHistory.push(query);
-
-		this.setState({
-			query: query,
-			pullRequest: {},
-			puppetComponents: []
-		});
 	}
 
 	render () {
@@ -130,19 +166,26 @@ export default class App extends Component {
 
 		return (
 			<div>
-				<div>
-					<input className='search-input' type='text' placeholder='Pull request number, eg. 1323' onChange={this.onQueryChange} value={this.state.query} />
-					<span className='pull-request-info'>{ !_.isEmpty(this.state.pullRequest) ? this.state.pullRequest.title + ' by ' + this.state.pullRequest.user.login : null }</span>
-				</div>
-
 				<div className='row'>
-					<div className='col-md-6'>
+					<div className='col-md-12'>
+						<PullRequestCompleter
+							query={this.state.query}
+							onChangeQuery={this.onChangeQuery.bind(this)}
+							onSelect={this.onSelectPullRequest} />
+
+						<SelectedPullRequest
+							pullRequest={this.state.pullRequest}
+							onClickResetPullRequest={this.onClickResetPullRequest.bind(this)} />
+					</div>
+
+					<div className={classNames('col-md-6', this.state.isLoading ? 'hidden' : '')}>
 						<h3>Changes:</h3>
 						<table className='changed-components-list'>
 							<tbody>{changedComponents}</tbody>
 						</table>
 					</div>
-					<div className='col-md-6'>
+
+					<div className={classNames('col-md-6', this.state.isLoading ? 'hidden' : '')}>
 						<h3>Unchanged:</h3>
 						<ul>{unChangedComponents}</ul>
 					</div>
