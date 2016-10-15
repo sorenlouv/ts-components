@@ -35,7 +35,7 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint --ext .js,.jsx ./src",
-    "prod": "NODE_ENV=production; browserify -t [ babelify --presets [ react es2015 ] ] -g [ uglifyify ] src/index.jsx -o docs/app.js;",
+    "prod": "NODE_ENV=production; browserify -t [ babelify --presets [ react es2015 ] ] -g [ uglifyify ] src/index.jsx  > docs/app.js",
     "dev": "NODE_ENV=development; watchify -t [ babelify --presets [ react es2015 ] ] src/index.jsx -o docs/app.js -dv & npm start"
   },
   "author": "Søren Louv-Jansen",

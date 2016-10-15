@@ -1,6 +1,6 @@
 {
   "integration_test": "Integration-Test",
-  "tradeshift_app_backend": "App-Service",
+  "tradeshift_app_backend": "App-Backend",
   "tradeshift_v4_apps_server": "Apps",
   "conversions": "Backend-Conversions",
   "tradeshift_paypalipn": "Backend-Payment",

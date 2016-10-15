@@ -20,7 +20,7 @@ githubService.req = _.memoize((url, options) => {
 	return axios(opts).then(res => {
 		return opts.raw ? res : res.data;
 	});
-}, (url, options) => JSON.stringify([url, options]));
+}, (url, options = {}) => JSON.stringify([url, options]));
 
 githubService.setAccessToken = function (accessToken) {
 	Cookies.set(COOKIE_NAME, accessToken, {
@@ -53,7 +53,7 @@ githubService.authenticate = function () {
 };
 
 githubService.isAccessTokenValid = function () {
-	return githubService.req('https://api.github.com/user')
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/contents/hiera/versions.yaml')
 		.then(() => true)
 		.catch(() => false);
 };
