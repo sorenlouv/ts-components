@@ -12,9 +12,11 @@ const SelectedPullRequest = ({pullRequest, onClickResetPullRequest}) => {
 		return null;
 	}
 
-	return <div className='pull-request-info'>
+	return <div>
 		<span className='image'><img src={pullRequest.user.avatar_url + '&s=30'} /></span>
-		<span className='number'>{pullRequest.number}</span>
+		<span className='number'>
+			<a href={'https://github.com/Tradeshift/tradeshift-puppet/pull/' + pullRequest.number}>{pullRequest.number}</a>
+		</span>
 		<span className='title'>{pullRequest.title}</span>
 		<a onClick={onClickResetPullRequest}>
 			<span className='glyphicon glyphicon glyphicon-remove-circle' />
@@ -27,12 +29,10 @@ export default class App extends Component {
 		super(props);
 		this.state = {
 			puppetComponents: [],
-			isLoading: true,
-			query: props.params.pullRequestNumber || '',
+			pullRequestNumber: props.params.pullRequestNumber,
 			pullRequest: {},
 			isAuthenticated: false
 		};
-		this.onSelectPullRequest = this.onSelectPullRequest.bind(this);
 	}
 
 	componentDidMount () {
@@ -53,40 +53,35 @@ export default class App extends Component {
 	}
 
 	componentDidUpdate (prevProps, prevState) {
-		const currentPullRequestNumber = _.get(this.state.pullRequest, 'number');
-		const prevPullRequestNumber = _.get(prevState.pullRequest, 'number');
-		if (this.state.isAuthenticated && prevPullRequestNumber !== currentPullRequestNumber) {
-			hashHistory.push(_.toString(currentPullRequestNumber));
+		if (this.state.isAuthenticated && prevState.pullRequestNumber !== this.state.pullRequestNumber) {
+			hashHistory.push(_.toString(this.state.pullRequestNumber));
 			this.getPuppetComponents();
 		}
 	}
 
-	onSelectPullRequest (event, { suggestion }) {
+	onSelectPullRequest (pullRequest) {
 		this.setState({
-			query: '',
-			pullRequest: suggestion,
-			puppetComponents: [],
-			isLoading: true
+			pullRequestNumber: pullRequest.number,
+			pullRequest: pullRequest,
+			puppetComponents: []
 		});
 	}
 
 	onClickResetPullRequest () {
 		this.setState({
 			pullRequest: {},
-			query: ''
-		});
-	}
-
-	onChangeQuery (event, { newValue }) {
-		this.setState({
-			query: newValue
+			pullRequestNumber: null
 		});
 	}
 
 	getPuppetComponents () {
+		this.setState({
+			isLoading: true
+		});
+
 		let promise = Bluebird.resolve();
-		if (this.state.query) {
-			promise = githubService.getPullRequest(this.state.query)
+		if (this.state.pullRequestNumber) {
+			promise = githubService.getPullRequest(this.state.pullRequestNumber)
 				.then(pullRequest => {
 					this.setState({
 						pullRequest: pullRequest
@@ -170,13 +165,17 @@ export default class App extends Component {
 				<div className='row'>
 					<div className='col-md-12'>
 						<PullRequestCompleter
-							query={this.state.query}
-							onChangeQuery={this.onChangeQuery.bind(this)}
-							onSelect={this.onSelectPullRequest} />
+							onSelectPullRequest={this.onSelectPullRequest.bind(this)} />
 
-						<SelectedPullRequest
-							pullRequest={this.state.pullRequest}
-							onClickResetPullRequest={this.onClickResetPullRequest.bind(this)} />
+						<div className='pull-request-info'>
+							{
+								_.isEmpty(this.state.pullRequest)
+									? 'The table below shows the version of each component in version.yaml, compared to the master branch in the component repository.'
+									: <SelectedPullRequest
+										pullRequest={this.state.pullRequest}
+										onClickResetPullRequest={this.onClickResetPullRequest.bind(this)} />
+							}
+						</div>
 					</div>
 
 					<div className={classNames('col-md-6', this.state.isLoading ? 'hidden' : '')}>

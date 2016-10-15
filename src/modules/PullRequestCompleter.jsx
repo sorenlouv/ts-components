@@ -20,7 +20,8 @@ export default class PullRequestCompleter extends Component {
 		super();
 
 		this.state = {
-			suggestions: []
+			suggestions: [],
+			query: ''
 		};
 
 		this.onSuggestionsFetchRequestedThrottled = _.throttle(this.onSuggestionsFetchRequested.bind(this), 500);
@@ -34,6 +35,19 @@ export default class PullRequestCompleter extends Component {
 		});
 	}
 
+	onChange (event, { newValue }) {
+		this.setState({
+			query: newValue
+		});
+	}
+
+	onSuggestionSelected (event, { suggestion }) {
+		this.props.onSelectPullRequest(suggestion);
+		this.setState({
+			query: ''
+		});
+	}
+
 	onSuggestionsClearRequested () {
 		this.setState({
 			suggestions: []
@@ -42,9 +56,9 @@ export default class PullRequestCompleter extends Component {
 
 	render () {
 		const inputProps = {
-			placeholder: 'Search for a pull request',
-			value: this.props.query,
-			onChange: this.props.onChangeQuery
+			placeholder: 'Search for pull requests',
+			value: this.state.query,
+			onChange: this.onChange.bind(this)
 		};
 
 		return (
@@ -54,7 +68,7 @@ export default class PullRequestCompleter extends Component {
 				onSuggestionsClearRequested={this.onSuggestionsClearRequested.bind(this)}
 				getSuggestionValue={getSuggestionValue}
 				renderSuggestion={renderSuggestion}
-				onSuggestionSelected={this.props.onSelect}
+				onSuggestionSelected={this.onSuggestionSelected.bind(this)}
 				shouldRenderSuggestions={() => true}
 				inputProps={inputProps}
 			/>
