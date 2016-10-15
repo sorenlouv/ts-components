@@ -4,7 +4,7 @@ import React, {Component} from 'react';
 import githubService from '../services/github';
 
 const getSuggestionValue = suggestion => {
-	return suggestion.number.toString();
+	return suggestion.number.toString() + ' - ' + suggestion.title;
 };
 
 const renderSuggestion = suggestion => (

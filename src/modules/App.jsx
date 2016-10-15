@@ -63,6 +63,7 @@ export default class App extends Component {
 
 	onSelectPullRequest (event, { suggestion }) {
 		this.setState({
+			query: '',
 			pullRequest: suggestion,
 			puppetComponents: [],
 			isLoading: true
