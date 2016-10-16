@@ -26,8 +26,6 @@
   "tradeshift_proxy": "Tradeshift-Proxy2",
   "tradeshift_proxy_internal": "Tradeshift-Proxy2",
   "workflow": "Workflow",
-  // "tradeshift_cloudscan": "cloudscan-service",
-  // "cloudscan_docdata": "cloudscan-service",
   "messagecore": "message-core",
   "tradeshift_tasks": "tradeshift-tasks",
   "supplier_management": "Supplier-Management",
@@ -37,9 +35,6 @@
   "tradeshift_go": "tradeshift-go",
   "business_analytics": "business-analytics",
   "business_analytics_etl": "business-analytics",
-  // "payments_cards_service": "tradeshift-payments",
-  // "payments_proxy": "tradeshift-payments",
-  // "payments_admin": "tradeshift-payments",
   "translation": "Translation-Service",
   "gosmtpd": ""
 }

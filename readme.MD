@@ -3,8 +3,7 @@ Project for analyzing version.yaml used in Tradeshift, and assist in creating PR
 # Getting started
 ```
 npm install
-npm run build-js
-npm start
+npm run dev
 ```
 
 Then open [http://localhost:3000](http://localhost:3000)

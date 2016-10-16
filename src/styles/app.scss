@@ -1,0 +1,72 @@
+body {
+    font-family: Helvetica, sans-serif;
+}
+
+.hidden {
+    display: none;
+}
+
+.btn-copy {
+    margin: 5px;
+}
+
+.github-login {
+    display: block;
+    margin: 20px auto;
+}
+
+.diff-ahead, .diff-behind {
+    color: white;
+    border: 1px solid #333;
+    margin: 0 3px;
+    padding: 3px 6px;
+    border-radius: 3px;
+}
+
+.diff-behind {
+    background-color: red;
+}
+
+.diff-ahead {
+    background-color: green;
+}
+
+.changed-components-list tr {
+    height: 35px;
+}
+
+.pull-request-info {
+    margin: 5px 0px;
+    background: #eee;
+    padding: 10px;
+    max-width: 600px;
+    width: 100%;
+    border: 1px solid #ccc;
+    position: relative;
+
+    /* duplicate...*/
+    .title {
+        display: inline-block;
+        vertical-align: middle;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: calc(100% - 85px);
+    }
+
+    .number {
+        font-weight: bold;
+        margin: 0 5px 0 10px;
+    }
+
+    .glyphicon {
+        float: right;
+        cursor: pointer;
+        position: absolute;
+        right: 10px;
+        top: 16px;
+    }
+
+}
+
+@import 'autocomplete';

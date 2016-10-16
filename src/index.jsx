@@ -3,6 +3,7 @@ import React from 'react';
 import { render } from 'react-dom';
 import App from './modules/App.jsx';
 import { createHashHistory } from 'history';
+require('./styles/app.scss');
 
 const appHistory = useRouterHistory(createHashHistory)({ queryKey: false });
 render(
