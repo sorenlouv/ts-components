@@ -130,60 +130,98 @@ githubService.getComponents = function (ref) {
 	});
 };
 
-githubService.getPuppetComponents = function (ref) {
-	const filePromises = [ githubService.getComponents() ];
+githubService.getPuppetComponents = function ({headSha, baseSha}) {
+	const componentPromises = [ githubService.getComponents() ];
 
-	if (ref) {
-		filePromises.push(githubService.getComponents(ref));
+	if (headSha) {
+		componentPromises.push(githubService.getComponents(headSha));
 	}
 
-	return Bluebird.all(filePromises)
-		.spread((currentComponents, refComponents) => {
+	if (baseSha) {
+		componentPromises.push(githubService.getComponents(baseSha));
+	}
+
+	return Bluebird.all(componentPromises)
+		.spread((currentComponents, headComponents, baseComponents) => {
 			const promises = currentComponents
 				.filter(component => component.name)
 				.map(component => {
-					const refComponent = _.find(refComponents, {key: component.key});
-
 					return {
 						name: component.name,
 						error: component.error,
-						shaFrom: ref ? component.sha : _.get(refComponent, 'sha', 'master'),
-						shaTo: ref ? _.get(refComponent, 'sha', 'master') : component.sha
+						current: component.sha,
+						head: _.get(_.find(headComponents, {key: component.key}), 'sha'),
+						base: _.get(_.find(baseComponents, {key: component.key}), 'sha')
 					};
 				});
 
-			return Bluebird.all(promises).then(versions => {
-				return _.sortBy(versions, 'name');
+			return Bluebird.all(promises).then(components => {
+				return _.sortBy(components, 'name');
 			});
 		})
-		.then(githubService.decorateWithDiffs);
+		.then(githubService.decorateCompenents);
 };
 
 githubService.getDiff = function (repoName, from, to) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/compare/' + from + '...' + to);
 };
 
-githubService.decorateWithDiffs = function (puppetVersions) {
-	const promises = puppetVersions.map(repo => {
-		if (!repo.shaFrom || !repo.shaTo) {
-			return Bluebird.resolve(repo);
-		}
+githubService.decorateComponentWithDiffs = function (component) {
+	const promises = [];
+	const hasPullRequestRef = component.base && component.head;
 
-		if (repo.shaFrom === repo.shaTo) {
-			return Bluebird.resolve(repo);
-		}
+	// Diff from head to base (baseDiff)
+	if (hasPullRequestRef && component.head !== component.base) {
+		const promise = githubService.getDiff(component.name, component.base, component.head).then(diff => {
+			return {
+				type: 'base',
+				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
+				from: component.base,
+				to: component.head
+			};
+		});
+		promises.push(promise);
+	}
 
-		return githubService.getDiff(repo.name, repo.shaFrom, repo.shaTo)
-			.then(diff => {
-				repo.diff = _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']);
-				return repo;
-			})
-			.catch(err => {
-				console.error('Could not get diff', repo.name, err);
-				return repo;
-			});
-	});
+	// Diff from head to current
+	if (hasPullRequestRef && component.head !== component.base) {
+		const promise = githubService.getDiff(component.name, component.current, component.head).then(diff => {
+			return {
+				type: 'master',
+				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
+				from: component.current,
+				to: component.head
+			};
+		});
+		promises.push(promise);
+	}
 
+	// Diff if no PR is given
+	if (!hasPullRequestRef) {
+		const promise = githubService.getDiff(component.name, component.current, 'master').then(diff => {
+			return {
+				type: 'nonPr',
+				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
+				from: component.current,
+				to: 'master'
+			};
+		});
+		promises.push(promise);
+	}
+
+	return Bluebird.all(promises)
+		.then(diffs => {
+			component.diffs = diffs;
+			return component;
+		})
+		.catch(err => {
+			console.error('Could not get diff', component.name, err);
+			return component;
+		});
+};
+
+githubService.decorateCompenents = function (components) {
+	const promises = components.map(githubService.decorateComponentWithDiffs);
 	return Bluebird.all(promises);
 };
 

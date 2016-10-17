@@ -102,8 +102,9 @@ export default class App extends Component {
 
 		promise
 			.then(pullRequest => {
-				const ref = _.get(pullRequest, 'head.sha');
-				return githubService.getPuppetComponents(ref);
+				const headSha = _.get(pullRequest, 'head.sha');
+				const baseSha = _.get(pullRequest, 'base.sha');
+				return githubService.getPuppetComponents({headSha, baseSha});
 			})
 			.then(puppetComponents => {
 				this.setState({
@@ -127,20 +128,40 @@ export default class App extends Component {
 			);
 		}
 
-		function isChanged (component) {
-			return _.get(component, 'diff.ahead_by') > 0 || _.get(component, 'diff.behind_by') > 0;
-		}
-
 		function getBehindByUrl (component) {
-			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.shaTo + '...' + component.shaFrom;
+			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.to + '...' + component.from;
 		}
 
 		function getAheadByUrl (component) {
-			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.shaFrom + '...' + component.shaTo;
+			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to;
 		}
 
-		const changedComponents = this.state.puppetComponents
-			.filter(isChanged)
+		const componentsComparedToBase = this.state.puppetComponents
+			.map(component => {
+				const newComponent = _.find(component.diffs, {type: 'base'}) || {};
+				newComponent.name = component.name;
+				return newComponent;
+			});
+
+		const componentsComparedToMaster = this.state.puppetComponents
+			.map(component => {
+				const newComponent = _.find(component.diffs, {type: 'master'}) || {};
+				newComponent.name = component.name;
+				return newComponent;
+			});
+
+		const nonPrComponents = this.state.puppetComponents
+			.map(component => {
+				const newComponent = _.find(component.diffs, {type: 'nonPr'}) || {};
+				newComponent.name = component.name;
+				return newComponent;
+			});
+
+		const ComponentsList = ({title, components}) => {
+			const rows = components
+			.filter(component => {
+				return _.get(component.diff, 'behind_by') > 0 || _.get(component.diff, 'ahead_by');
+			})
 			.map((component, i) => {
 				return <tr key={i}>
 					<td>{component.name}</td>
@@ -149,16 +170,29 @@ export default class App extends Component {
 						{ component.diff.behind_by > 0 ? <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a> : null }
 					</td>
 					<td>
-						{ component.diff.ahead_by > 0 ? <button type='button' className='btn-copy btn btn-primary btn-sm' data-clipboard-text={githubService.getShortlog(component.diff.commits)}>Copy</button> : null }
+						<button
+							type='button'
+							className='btn-copy btn btn-primary btn-sm'
+							data-clipboard-text={githubService.getShortlog(component.diff.commits)}>
+							Copy
+						</button>
 					</td>
 				</tr>;
 			});
 
-		const unChangedComponents = this.state.puppetComponents
-			.filter(_.negate(isChanged))
-			.map((component, i) => {
-				return <li key={i}>{component.name} {component.error ? <span className='glyphicon glyphicon-exclamation-sign' title={component.error.message} /> : null}</li>;
-			});
+			if (_.isEmpty(rows)) {
+				return null;
+			}
+
+			return (
+				<div className={classNames('col-md-6', this.state.isLoading || _.isEmpty(components) ? 'hidden' : '')}>
+					<h3>{title}:</h3>
+					<table className='changed-components-list'>
+						<tbody>{rows}</tbody>
+					</table>
+				</div>
+			);
+		};
 
 		return (
 			<div>
@@ -178,17 +212,9 @@ export default class App extends Component {
 						</div>
 					</div>
 
-					<div className={classNames('col-md-6', this.state.isLoading ? 'hidden' : '')}>
-						<h3>Changes:</h3>
-						<table className='changed-components-list'>
-							<tbody>{changedComponents}</tbody>
-						</table>
-					</div>
-
-					<div className={classNames('col-md-6', this.state.isLoading ? 'hidden' : '')}>
-						<h3>Unchanged:</h3>
-						<ul>{unChangedComponents}</ul>
-					</div>
+					<ComponentsList title='Compared with "testing" version.yaml' components={componentsComparedToMaster} />
+					<ComponentsList title='Compared with base version.yaml' components={componentsComparedToBase} />
+					<ComponentsList title='Current components' components={nonPrComponents} />
 				</div>
 			</div>
 		);
