@@ -157,6 +157,10 @@ export default class App extends Component {
 				return newComponent;
 			});
 
+		function getRepoUrl (name, sha) {
+			return 'https://github.com/Tradeshift/' + name + '/commits/' + sha;
+		}
+
 		const ComponentsList = ({title, components}) => {
 			const rows = components
 			.filter(component => {
@@ -164,7 +168,7 @@ export default class App extends Component {
 			})
 			.map((component, i) => {
 				return <tr key={i}>
-					<td>{component.name}</td>
+					<td><a href={getRepoUrl(component.name, component.from)}>{component.name}</a></td>
 					<td>
 						{ component.diff.ahead_by > 0 ? <a className='diff-ahead' href={getAheadByUrl(component)}>{component.diff.ahead_by} ahead</a> : null }
 						{ component.diff.behind_by > 0 ? <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a> : null }
@@ -194,6 +198,23 @@ export default class App extends Component {
 			);
 		};
 
+		const InfoText = ({isLoading, components}) => {
+			const changedComponentCount = components.filter(component => _.size(component.diffs) > 0).length;
+			if (changedComponentCount > 0) {
+				return null;
+			}
+
+			return (
+				<div className='col-md-6'>
+					{
+						this.state.isLoading
+							? <div className='loading-spinner'><img src='spinner.gif' /></div>
+							: <p>No components were changed for this PR</p>
+					}
+				</div>
+			);
+		};
+
 		return (
 			<div>
 				<div className='row'>
@@ -211,6 +232,8 @@ export default class App extends Component {
 							}
 						</div>
 					</div>
+
+					<InfoText isLoading={this.state.isLoading} components={this.state.puppetComponents} />
 
 					<ComponentsList title='Compared with "testing" version.yaml' components={componentsComparedToMaster} />
 					<ComponentsList title='Compared with base version.yaml' components={componentsComparedToBase} />
