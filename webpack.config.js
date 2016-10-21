@@ -1,5 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
+const env = JSON.stringify(process.env.NODE_ENV || 'development');
+console.log('Current env', env);
 
 const config = {
 	entry: './src/index.jsx',
@@ -10,7 +12,7 @@ const config = {
 	},
 	plugins: [
 		new webpack.DefinePlugin({
-			'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+			'process.env.NODE_ENV': env
 		})
 	],
 	module: {

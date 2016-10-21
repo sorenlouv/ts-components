@@ -40,7 +40,7 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint --ext .js,.jsx ./src",
-    "prod": "NODE_ENV=production; webpack -p",
+    "prod": "export NODE_ENV=production; webpack -p;",
     "dev": "NODE_ENV=development; webpack-dev-server"
   },
   "author": "Søren Louv-Jansen",
