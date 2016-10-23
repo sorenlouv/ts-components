@@ -75,6 +75,7 @@ githubService.getSha = function (repoName, lineValue) {
 
 githubService.getShaByTag = function (repoName, tag) {
 	return githubService.req('https://api.github.com/repos/Tradeshift/' + repoName + '/git/refs/tags/' + tag)
+		.then(res => githubService.req('https://api.github.com/repos/Tradeshift/Backend-Service/git/tags/' + res.object.sha))
 		.then(res => res.object.sha)
 		.catch(err => {
 			switch (_.get(err, 'response.status')) {
