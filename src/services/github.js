@@ -130,19 +130,15 @@ githubService.getComponents = function (ref) {
 	});
 };
 
-githubService.getPuppetComponents = function ({headSha, baseSha}) {
+githubService.getPuppetComponents = function (headSha) {
 	const componentPromises = [ githubService.getComponents() ];
 
 	if (headSha) {
 		componentPromises.push(githubService.getComponents(headSha));
 	}
 
-	if (baseSha) {
-		componentPromises.push(githubService.getComponents(baseSha));
-	}
-
 	return Bluebird.all(componentPromises)
-		.spread((currentComponents, headComponents, baseComponents) => {
+		.spread((currentComponents, headComponents) => {
 			const promises = currentComponents
 				.filter(component => component.name)
 				.map(component => {
@@ -150,8 +146,7 @@ githubService.getPuppetComponents = function ({headSha, baseSha}) {
 						name: component.name,
 						error: component.error,
 						current: component.sha,
-						head: _.get(_.find(headComponents, {key: component.key}), 'sha'),
-						base: _.get(_.find(baseComponents, {key: component.key}), 'sha')
+						head: _.get(_.find(headComponents, {key: component.key}), 'sha')
 					};
 				});
 
@@ -168,23 +163,10 @@ githubService.getDiff = function (repoName, from, to) {
 
 githubService.decorateComponentWithDiffs = function (component) {
 	const promises = [];
-	const hasPullRequestRef = component.base && component.head;
-
-	// Diff from head to base (baseDiff)
-	if (hasPullRequestRef && component.head !== component.base) {
-		const promise = githubService.getDiff(component.name, component.base, component.head).then(diff => {
-			return {
-				type: 'base',
-				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
-				from: component.base,
-				to: component.head
-			};
-		});
-		promises.push(promise);
-	}
+	const hasHeadRef = component.head;
 
 	// Diff from head to current
-	if (hasPullRequestRef && component.head !== component.base) {
+	if (hasHeadRef && component.current !== component.head) {
 		const promise = githubService.getDiff(component.name, component.current, component.head).then(diff => {
 			return {
 				type: 'master',
@@ -197,7 +179,7 @@ githubService.decorateComponentWithDiffs = function (component) {
 	}
 
 	// Diff if no PR is given
-	if (!hasPullRequestRef) {
+	if (!hasHeadRef) {
 		const promise = githubService.getDiff(component.name, component.current, 'master').then(diff => {
 			return {
 				type: 'nonPr',
@@ -211,7 +193,11 @@ githubService.decorateComponentWithDiffs = function (component) {
 
 	return Bluebird.all(promises)
 		.then(diffs => {
+			// component.diffs = diffs.filter(diff => {
+			// 	return diff.diff.commits.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
+			// });
 			component.diffs = diffs;
+
 			return component;
 		})
 		.catch(err => {

@@ -103,8 +103,7 @@ export default class App extends Component {
 		promise
 			.then(pullRequest => {
 				const headSha = _.get(pullRequest, 'head.sha');
-				const baseSha = _.get(pullRequest, 'base.sha');
-				return githubService.getPuppetComponents({headSha, baseSha});
+				return githubService.getPuppetComponents(headSha);
 			})
 			.then(puppetComponents => {
 				this.setState({
@@ -136,13 +135,6 @@ export default class App extends Component {
 			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to;
 		}
 
-		const componentsComparedToBase = this.state.puppetComponents
-			.map(component => {
-				const newComponent = _.find(component.diffs, {type: 'base'}) || {};
-				newComponent.name = component.name;
-				return newComponent;
-			});
-
 		const componentsComparedToMaster = this.state.puppetComponents
 			.map(component => {
 				const newComponent = _.find(component.diffs, {type: 'master'}) || {};
@@ -163,6 +155,21 @@ export default class App extends Component {
 
 		const ComponentsList = ({title, components}) => {
 			const rows = components
+			.map(component => {
+				if (!component.diff) {
+					return component;
+				}
+
+				// Exclude diff if it only contains merge commits
+				const hasNonMergeCommits = component.diff.commits
+					.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
+
+				if (!hasNonMergeCommits) {
+					component.diff.ahead_by = 0;
+				}
+
+				return component;
+			})
 			.filter(component => {
 				return _.get(component.diff, 'behind_by') > 0 || _.get(component.diff, 'ahead_by');
 			})
@@ -189,7 +196,7 @@ export default class App extends Component {
 			}
 
 			return (
-				<div className={classNames('col-md-6', this.state.isLoading || _.isEmpty(components) ? 'hidden' : '')}>
+				<div className={classNames('col-md-6', _.isEmpty(components) ? 'hidden' : '')}>
 					<h3>{title}:</h3>
 					<table className='changed-components-list'>
 						<tbody>{rows}</tbody>
@@ -198,9 +205,8 @@ export default class App extends Component {
 			);
 		};
 
-		const InfoText = ({isLoading, components}) => {
-			const changedComponentCount = components.filter(component => _.size(component.diffs) > 0).length;
-			if (changedComponentCount > 0) {
+		const NoComponentChangesText = ({components, pullRequest, isLoading}) => {
+			if (shouldShowComponentList(components, pullRequest, isLoading)) {
 				return null;
 			}
 
@@ -209,12 +215,20 @@ export default class App extends Component {
 					{
 						this.state.isLoading
 							? <div className='loading-spinner'><img src='spinner.gif' /></div>
-							: <p>No components were changed for this PR</p>
+							: pullRequest.merged
+								? <p>This PR was merged, so there is no diff to display</p>
+								: <p>No components were changed for this PR</p>
 					}
 				</div>
 			);
 		};
 
+		function shouldShowComponentList (components, pullRequest, isLoading) {
+			const changedComponentCount = components.filter(component => _.size(component.diffs) > 0).length;
+			return changedComponentCount > 0 && !pullRequest.merged && !isLoading;
+		}
+
+		const shouldShowList = shouldShowComponentList(this.state.puppetComponents, this.state.pullRequest, this.state.isLoading);
 		return (
 			<div>
 				<div className='row'>
@@ -233,11 +247,14 @@ export default class App extends Component {
 						</div>
 					</div>
 
-					<InfoText isLoading={this.state.isLoading} components={this.state.puppetComponents} />
+					<NoComponentChangesText components={this.state.puppetComponents} pullRequest={this.state.pullRequest} isLoading={this.state.isLoading} />
 
-					<ComponentsList title='Compared with "testing" version.yaml' components={componentsComparedToMaster} />
-					<ComponentsList title='Compared with base version.yaml' components={componentsComparedToBase} />
-					<ComponentsList title='Current components' components={nonPrComponents} />
+					{ shouldShowList &&
+						<div>
+							<ComponentsList title='Compared with "testing" version.yaml' components={componentsComparedToMaster} isLoading={this.state.isLoading} />
+							<ComponentsList title='Current components' components={nonPrComponents} isLoading={this.state.isLoading} />
+						</div>
+					}
 				</div>
 			</div>
 		);
