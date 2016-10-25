@@ -1,5 +1,13 @@
 body {
     font-family: Helvetica, sans-serif;
+    margin-top: 20px;
+}
+
+.environments {
+    height: 42px;
+    width: 100%;
+    display: inline-block;
+    background: #fff;
 }
 
 .loading-spinner {
@@ -40,7 +48,6 @@ body {
     margin: 5px 0px;
     background: #eee;
     padding: 10px;
-    max-width: 600px;
     width: 100%;
     border: 1px solid #ccc;
     position: relative;

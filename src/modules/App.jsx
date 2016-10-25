@@ -30,7 +30,8 @@ export default class App extends Component {
 			puppetComponents: [],
 			pullRequestNumber: props.params.pullRequestNumber,
 			pullRequest: {},
-			isAuthenticated: false
+			isAuthenticated: false,
+			environment: 'testing'
 		};
 	}
 
@@ -52,8 +53,13 @@ export default class App extends Component {
 	}
 
 	componentDidUpdate (prevProps, prevState) {
-		if (this.state.isAuthenticated && prevState.pullRequestNumber !== this.state.pullRequestNumber) {
-			hashHistory.push(_.toString(this.state.pullRequestNumber));
+		const isPrChanged = prevState.pullRequestNumber !== this.state.pullRequestNumber;
+		const isEnvironmentChanged = prevState.environment !== this.state.environment;
+
+		if (this.state.isAuthenticated && (isPrChanged || isEnvironmentChanged)) {
+			if (isPrChanged) {
+				hashHistory.push(_.toString(this.state.pullRequestNumber));
+			}
 			this.getPuppetComponents();
 		}
 	}
@@ -63,6 +69,12 @@ export default class App extends Component {
 			pullRequestNumber: pullRequest.number,
 			pullRequest: pullRequest,
 			puppetComponents: []
+		});
+	}
+
+	onChangeEnvironment ({target: {value}}) {
+		this.setState({
+			environment: value
 		});
 	}
 
@@ -101,7 +113,7 @@ export default class App extends Component {
 
 		promise
 			.then(pullRequest => {
-				const baseRef = 'testing';
+				const baseRef = this.state.environment;
 				const headSha = _.get(pullRequest, 'head.sha');
 				return githubService.getPuppetComponents(baseRef, headSha);
 			})
@@ -202,7 +214,7 @@ export default class App extends Component {
 		return (
 			<div>
 				<div className='row'>
-					<div className='col-md-12'>
+					<div className='col-md-6'>
 						<PullRequestCompleter
 							onSelectPullRequest={this.onSelectPullRequest.bind(this)} />
 
@@ -216,8 +228,21 @@ export default class App extends Component {
 							}
 						</div>
 					</div>
-
 					<div className='col-md-6'>
+						<select className='environments'
+							value={this.state.environment}
+							onChange={this.onChangeEnvironment.bind(this)}>
+							<option>testing</option>
+							<option>production</option>
+							<option>sandbox</option>
+							<option>smoketest</option>
+							<option>stable</option>
+							<option>staging</option>
+						</select>
+					</div>
+				</div>
+				<div className='row'>
+					<div className='col-md-12'>
 						<ComponentsList
 							title='Current components'
 							isLoading={this.state.isLoading}

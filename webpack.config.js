@@ -28,22 +28,24 @@ const config = {
 			{
 				test: /\.jsx|.js$/,
 				exclude: /node_modules/,
-				loaders: ['babel']
+				loader: 'babel'
 			}
 		]
-	},
-	devServer: {
-		inline: true
 	}
 };
 
 if (process.env.NODE_ENV === 'production') {
+	config.devtool = 'source-map';
 	config.plugins.push(new webpack.optimize.UglifyJsPlugin({
 		compress: { warnings: false },
 		output: {
 			comments: false
 		}
 	}));
+} else {
+	config.devServer = {
+		inline: true
+	};
 }
 
 module.exports = config;

@@ -1,7 +1,7 @@
 {
   "name": "github-deployment",
   "version": "1.0.0",
-  "description": "Github Tradeshift Deployment",
+  "description": "Tradeshift Component Overview",
   "main": "app.js",
   "dependencies": {
     "axios": "0.15.2",
@@ -40,13 +40,13 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint --ext .js,.jsx ./src",
-    "prod": "export NODE_ENV=production; webpack -p;",
-    "dev": "NODE_ENV=development; webpack-dev-server"
+    "prod": "export NODE_ENV=production; webpack --optimize-minimize --progress;",
+    "dev": "export NODE_ENV=development; webpack-dev-server"
   },
   "author": "Søren Louv-Jansen",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sqren/tradeshift-deployment.git"
+    "url": "https://github.com/sqren/ts-component.git"
   },
   "license": "ISC"
 }
