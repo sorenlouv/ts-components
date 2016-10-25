@@ -1,11 +1,11 @@
-const axios = require('axios');
-const firebase = require('firebase');
-const config = require('../config.json');
-const repos = require('../repos.json');
-const Cookies = require('js-cookie');
-const Bluebird = require('bluebird');
-const yaml = require('js-yaml');
-const _ = require('lodash');
+import axios from 'axios';
+import firebase from 'firebase';
+import config from '../config.json';
+import repos from '../repos.json';
+import * as Cookies from 'js-cookie';
+import Bluebird from 'bluebird';
+import * as yaml from 'js-yaml';
+import _ from 'lodash';
 
 const githubService = {};
 const COOKIE_NAME = 'github_access_token';
@@ -131,8 +131,8 @@ githubService.getComponents = function (ref) {
 	});
 };
 
-githubService.getPuppetComponents = function (headSha) {
-	const componentPromises = [ githubService.getComponents() ];
+githubService.getPuppetComponents = function (baseRef, headSha) {
+	const componentPromises = [ githubService.getComponents(baseRef) ];
 
 	if (headSha) {
 		componentPromises.push(githubService.getComponents(headSha));
@@ -143,11 +143,21 @@ githubService.getPuppetComponents = function (headSha) {
 			const promises = currentComponents
 				.filter(component => component.name)
 				.map(component => {
+					const headComponent = _.find(headComponents, {key: component.key});
+					let from, to;
+					if (!headComponent) {
+						from = component.sha;
+						to = 'master';
+					} else if (_.get(headComponent, 'sha') && component.sha !== headComponent.sha) {
+						from = component.sha;
+						to = headComponent.sha;
+					}
+
 					return {
 						name: component.name,
 						error: component.error,
-						current: component.sha,
-						head: _.get(_.find(headComponents, {key: component.key}), 'sha')
+						from: from,
+						to: to
 					};
 				});
 
@@ -163,42 +173,16 @@ githubService.getDiff = function (repoName, from, to) {
 };
 
 githubService.decorateComponentWithDiffs = function (component) {
-	const promises = [];
-	const hasHeadRef = component.head;
-
-	// Diff from head to current
-	if (hasHeadRef && component.current !== component.head) {
-		const promise = githubService.getDiff(component.name, component.current, component.head).then(diff => {
-			return {
-				type: 'master',
-				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
-				from: component.current,
-				to: component.head
-			};
-		});
-		promises.push(promise);
+	if (!component.name || !component.from || component.name === component.from) {
+		return Bluebird.resolve(component);
 	}
 
-	// Diff if no PR is given
-	if (!hasHeadRef) {
-		const promise = githubService.getDiff(component.name, component.current, 'master').then(diff => {
-			return {
-				type: 'nonPr',
-				diff: _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']),
-				from: component.current,
-				to: 'master'
-			};
-		});
-		promises.push(promise);
-	}
-
-	return Bluebird.all(promises)
-		.then(diffs => {
-			// component.diffs = diffs.filter(diff => {
-			// 	return diff.diff.commits.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
-			// });
-			component.diffs = diffs;
-
+	return githubService.getDiff(component.name, component.from, component.to)
+		.then(diff => {
+			return _.pick(diff, ['status', 'ahead_by', 'behind_by', 'commits']);
+		})
+		.then(diff => {
+			component.diff = diff;
 			return component;
 		})
 		.catch(err => {

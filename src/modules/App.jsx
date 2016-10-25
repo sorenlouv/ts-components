@@ -1,4 +1,3 @@
-import classNames from 'classnames';
 import React, {Component} from 'react';
 import { hashHistory } from 'react-router';
 import githubService from '../services/github';
@@ -102,8 +101,9 @@ export default class App extends Component {
 
 		promise
 			.then(pullRequest => {
+				const baseRef = 'testing';
 				const headSha = _.get(pullRequest, 'head.sha');
-				return githubService.getPuppetComponents(headSha);
+				return githubService.getPuppetComponents(baseRef, headSha);
 			})
 			.then(puppetComponents => {
 				this.setState({
@@ -135,100 +135,70 @@ export default class App extends Component {
 			return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to;
 		}
 
-		const componentsComparedToMaster = this.state.puppetComponents
-			.map(component => {
-				const newComponent = _.find(component.diffs, {type: 'master'}) || {};
-				newComponent.name = component.name;
-				return newComponent;
-			});
-
-		const nonPrComponents = this.state.puppetComponents
-			.map(component => {
-				const newComponent = _.find(component.diffs, {type: 'nonPr'}) || {};
-				newComponent.name = component.name;
-				return newComponent;
-			});
-
 		function getRepoUrl (name, sha) {
 			return 'https://github.com/Tradeshift/' + name + '/commits/' + sha;
 		}
 
-		const ComponentsList = ({title, components}) => {
+		const ComponentsList = ({title, components, pullRequest, isLoading}) => {
+			if (isLoading) {
+				return <div className='loading-spinner'><img src='spinner.gif' /></div>;
+			}
+
+			if (pullRequest.merged) {
+				return <p>This PR was merged, so there is no diff to display</p>;
+			}
+
 			const rows = components
-			.map(component => {
-				if (!component.diff) {
+				.map(component => {
+					if (!component.diff) {
+						return component;
+					}
+
+					// Exclude diff if it only contains merge commits
+					const hasNonMergeCommits = component.diff.commits
+						.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
+
+					if (!hasNonMergeCommits) {
+						component.diff.ahead_by = 0;
+					}
+
 					return component;
-				}
-
-				// Exclude diff if it only contains merge commits
-				const hasNonMergeCommits = component.diff.commits
-					.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
-
-				if (!hasNonMergeCommits) {
-					component.diff.ahead_by = 0;
-				}
-
-				return component;
-			})
-			.filter(component => {
-				return _.get(component.diff, 'behind_by') > 0 || _.get(component.diff, 'ahead_by');
-			})
-			.map((component, i) => {
-				return <tr key={i}>
-					<td><a href={getRepoUrl(component.name, component.from)}>{component.name}</a></td>
-					<td>
-						{ component.diff.ahead_by > 0 ? <a className='diff-ahead' href={getAheadByUrl(component)}>{component.diff.ahead_by} ahead</a> : null }
-						{ component.diff.behind_by > 0 ? <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a> : null }
-					</td>
-					<td>
-						<button
-							type='button'
-							className='btn-copy btn btn-primary btn-sm'
-							data-clipboard-text={githubService.getShortlog(component.diff.commits)}>
-							Copy
-						</button>
-					</td>
-				</tr>;
-			});
+				})
+				.filter(component => {
+					return _.get(component.diff, 'behind_by') > 0 || _.get(component.diff, 'ahead_by') > 0;
+				})
+				.map((component, i) => {
+					return <tr key={i}>
+						<td><a href={getRepoUrl(component.name, component.from)}>{component.name}</a></td>
+						<td>
+							{ component.diff.ahead_by > 0 ? <a className='diff-ahead' href={getAheadByUrl(component)}>{component.diff.ahead_by} ahead</a> : null }
+							{ component.diff.behind_by > 0 ? <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a> : null }
+						</td>
+						<td>
+							<button
+								type='button'
+								className='btn-copy btn btn-primary btn-sm'
+								data-clipboard-text={githubService.getShortlog(component.diff.commits)}>
+								Copy
+							</button>
+						</td>
+					</tr>;
+				});
 
 			if (_.isEmpty(rows)) {
 				return null;
 			}
 
 			return (
-				<div className={classNames('col-md-6', _.isEmpty(components) ? 'hidden' : '')}>
+				<div>
 					<h3>{title}:</h3>
-					<table className='changed-components-list'>
+					<table>
 						<tbody>{rows}</tbody>
 					</table>
 				</div>
 			);
 		};
 
-		const NoComponentChangesText = ({components, pullRequest, isLoading}) => {
-			if (shouldShowComponentList(components, pullRequest, isLoading)) {
-				return null;
-			}
-
-			return (
-				<div className='col-md-6'>
-					{
-						this.state.isLoading
-							? <div className='loading-spinner'><img src='spinner.gif' /></div>
-							: pullRequest.merged
-								? <p>This PR was merged, so there is no diff to display</p>
-								: <p>No components were changed for this PR</p>
-					}
-				</div>
-			);
-		};
-
-		function shouldShowComponentList (components, pullRequest, isLoading) {
-			const changedComponentCount = components.filter(component => _.size(component.diffs) > 0).length;
-			return changedComponentCount > 0 && !pullRequest.merged && !isLoading;
-		}
-
-		const shouldShowList = shouldShowComponentList(this.state.puppetComponents, this.state.pullRequest, this.state.isLoading);
 		return (
 			<div>
 				<div className='row'>
@@ -247,14 +217,13 @@ export default class App extends Component {
 						</div>
 					</div>
 
-					<NoComponentChangesText components={this.state.puppetComponents} pullRequest={this.state.pullRequest} isLoading={this.state.isLoading} />
-
-					{ shouldShowList &&
-						<div>
-							<ComponentsList title='Compared with "testing" version.yaml' components={componentsComparedToMaster} isLoading={this.state.isLoading} />
-							<ComponentsList title='Current components' components={nonPrComponents} isLoading={this.state.isLoading} />
-						</div>
-					}
+					<div className='col-md-6'>
+						<ComponentsList
+							title='Current components'
+							isLoading={this.state.isLoading}
+							components={this.state.puppetComponents}
+							pullRequest={this.state.pullRequest} />
+					</div>
 				</div>
 			</div>
 		);
