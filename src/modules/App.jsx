@@ -30,6 +30,7 @@ export default class App extends Component {
 			puppetComponents: [],
 			pullRequestNumber: props.params.pullRequestNumber,
 			pullRequest: {},
+			isAuthPending: true,
 			isAuthenticated: false,
 			environment: 'testing'
 		};
@@ -43,10 +44,15 @@ export default class App extends Component {
 			githubService.isAccessTokenValid().then(isValid => {
 				if (isValid) {
 					this.setState({
-						isAuthenticated: true
+						isAuthenticated: true,
+						isAuthPending: false
 					});
 
 					this.getPuppetComponents();
+				} else {
+					this.setState({
+						isAuthPending: false
+					});
 				}
 			});
 		});
@@ -132,11 +138,15 @@ export default class App extends Component {
 
 	render () {
 		if (!this.state.isAuthenticated) {
-			return (
-				<button type='button' className='github-login btn btn-default btn-lg' onClick={this.onClickLogin}>
-					<img src='github-icon.png' width='30' /> Sign in with Github
-				</button>
-			);
+			if (!this.state.isAuthPending) {
+				return (
+					<button type='button' className='github-login btn btn-default btn-lg' onClick={this.onClickLogin}>
+						<img src='github-icon.png' width='30' /> Sign in with Github
+					</button>
+				);
+			} else {
+				return <div className='loading-spinner'><img src='spinner.gif' /></div>;
+			}
 		}
 
 		function getBehindByUrl (component) {
@@ -198,7 +208,7 @@ export default class App extends Component {
 				});
 
 			if (_.isEmpty(rows)) {
-				return null;
+				return <p>No components were changed for this PR</p>;
 			}
 
 			return (

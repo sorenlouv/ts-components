@@ -23,9 +23,7 @@ githubService.req = _.memoize((url, options) => {
 }, (url, options = {}) => JSON.stringify([url, options]));
 
 githubService.setAccessToken = function (accessToken) {
-	Cookies.set(COOKIE_NAME, accessToken, {
-		expires: 1
-	});
+	Cookies.set(COOKIE_NAME, accessToken);
 };
 
 githubService.getAccessToken = function () {
