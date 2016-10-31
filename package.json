@@ -41,7 +41,7 @@
     "start": "node index.js",
     "lint": "eslint --ext .js,.jsx ./src",
     "prod": "export NODE_ENV=production; webpack --optimize-minimize --progress;",
-    "dev": "export NODE_ENV=development; webpack-dev-server"
+    "dev": "export NODE_ENV=development; webpack-dev-server --port 3030"
   },
   "author": "Søren Louv-Jansen",
   "repository": {
