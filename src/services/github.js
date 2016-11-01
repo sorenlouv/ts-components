@@ -17,7 +17,7 @@ githubService.req = _.memoize((url, options) => {
 			access_token: githubService.getAccessToken()
 		}
 	});
-	return axios(opts).then(res => {
+	return Bluebird.resolve(axios(opts)).then(res => {
 		return opts.raw ? res : res.data;
 	});
 }, (url, options = {}) => JSON.stringify([url, options]));
@@ -86,7 +86,17 @@ githubService.getShaByTag = function (repoName, tag) {
 };
 
 githubService.getPullRequest = function (number) {
-	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + number);
+	return githubService.req('https://api.github.com/repos/Tradeshift/tradeshift-puppet/pulls/' + number)
+		.catch(err => {
+			switch (_.get(err, 'response.status')) {
+				case 404:
+					console.warn('Pull request does not exist');
+					break;
+				default:
+					console.error('Could not get pull request', err);
+			}
+			throw err;
+		});
 };
 
 githubService.searchPullRequests = function (q) {
@@ -142,19 +152,12 @@ githubService.getPuppetComponents = function (baseRef, headSha) {
 				.filter(component => component.name)
 				.map(component => {
 					const headComponent = _.find(headComponents, {key: component.key});
-					let from, to;
-					if (!headComponent) {
-						from = component.sha;
-						to = 'master';
-					} else if (_.get(headComponent, 'sha') && component.sha !== headComponent.sha) {
-						from = component.sha;
-						to = headComponent.sha;
-					}
+					const to = _.get(headComponent, 'sha') ? headComponent.sha : 'master';
 
 					return {
 						name: component.name,
 						error: component.error,
-						from: from,
+						from: component.sha,
 						to: to
 					};
 				});
@@ -171,7 +174,7 @@ githubService.getDiff = function (repoName, from, to) {
 };
 
 githubService.decorateComponentWithDiffs = function (component) {
-	if (!component.name || !component.from || component.name === component.from) {
+	if (!component.name || !component.to || component.to === component.from) {
 		return Bluebird.resolve(component);
 	}
 

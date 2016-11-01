@@ -1,22 +1,13 @@
+@import 'mixins';
+
 body {
     font-family: Helvetica, sans-serif;
     margin-top: 20px;
 }
 
-.environments {
-    height: 42px;
-    width: 100%;
-    display: inline-block;
-    background: #fff;
-}
-
 .loading-spinner {
     text-align: center;
     padding-top: 30px;
-}
-
-.hidden {
-    display: none;
 }
 
 .btn-copy {
@@ -28,23 +19,50 @@ body {
     margin: 20px auto;
 }
 
-.diff-ahead, .diff-behind {
-    color: white;
-    border: 1px solid #333;
-    margin: 0 3px;
-    padding: 3px 6px;
-    border-radius: 3px;
+
+table.overview {
+    thead {
+        td {
+            text-transform: capitalize;
+            text-align: center;
+            font-size: 20px;
+        }
+    }
+
+    tbody {
+        tr:nth-child(odd) {
+            border-top: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+            background-color: #eee;
+        }
+        td {
+            border-right: 1px solid #ddd;
+            padding: 3px 9px;
+
+            .diff-ahead, .diff-behind {
+                vertical-align: middle;
+                @include text-truncate;
+                display: inline-block;
+                color: white;
+                border: 1px solid #333;
+                margin: 3px 0;
+                padding: 3px 6px;
+                border-radius: 3px;
+            }
+
+            .diff-behind {
+                background-color: red;
+            }
+
+            .diff-ahead {
+                background-color: green;
+            }
+
+        }
+    }
 }
 
-.diff-behind {
-    background-color: red;
-}
-
-.diff-ahead {
-    background-color: green;
-}
-
-.pull-request-info {
+.selected-pull-request-container {
     margin: 5px 0px;
     background: #eee;
     padding: 10px;
