@@ -105,7 +105,10 @@ export default class MainContainer extends Component {
 								const testingComponent = _.find(this.state.puppetComponents[0], {name: name});
 								const component = _.find(this.state.puppetComponents[i], {name: name});
 								const isEqual = i !== 0 && _.isEqual(testingComponent, component);
-								return [<td className={isEqual ? 'identical' : ''}><AheadByButton component={component} /> <BehindByButton component={component} /></td>];
+								return [<td className={isEqual ? 'identical' : ''}>
+									<BehindByButton component={component} />
+									<AheadByButton component={component} />
+								</td>];
 							})
 						}
 					</tr>

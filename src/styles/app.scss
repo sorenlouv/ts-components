@@ -37,7 +37,7 @@ table.overview {
         }
         td {
             border-right: 1px solid #ddd;
-            padding: 3px 9px;
+            padding: 3px 6px;
 
             .diff-ahead, .diff-behind {
                 vertical-align: middle;
@@ -45,7 +45,7 @@ table.overview {
                 display: inline-block;
                 color: white;
                 border: 1px solid #333;
-                margin: 3px 0;
+                margin: 3px;
                 padding: 3px 6px;
                 border-radius: 3px;
             }

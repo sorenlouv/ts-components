@@ -10,7 +10,7 @@ function getAheadByUrl (component) {
 	return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to;
 }
 
-export function AheadByButton ({component}) {
+export function BehindByButton ({component}) {
 	// Exclude diff if it only contains merge commits
 	const hasNonMergeCommits = _.get(component.diff, 'commits', [])
 		.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
@@ -19,15 +19,15 @@ export function AheadByButton ({component}) {
 		return null;
 	}
 
-	return <a className='diff-ahead' href={getAheadByUrl(component)}>{component.diff.ahead_by} ahead</a>;
+	return <a className='diff-behind' href={getAheadByUrl(component)}>{component.diff.ahead_by} behind</a>;
 }
 
-export const BehindByButton = ({component}) => {
+export const AheadByButton = ({component}) => {
 	if (!_.get(component.diff, 'behind_by') > 0) {
 		return null;
 	}
 
-	return <a className='diff-behind' href={getBehindByUrl(component)}>{component.diff.behind_by} behind</a>;
+	return <a className='diff-ahead' href={getBehindByUrl(component)}>{component.diff.behind_by} ahead</a>;
 };
 
 export const CopyButton = ({component}) => {
