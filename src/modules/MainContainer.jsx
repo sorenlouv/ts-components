@@ -13,13 +13,15 @@ function getRepoUrl (name, sha = '') {
 	return 'https://github.com/Tradeshift/' + name + '/commits/' + sha;
 }
 
+const ENVIRONMENTS = ['testing', 'smoketest', 'sandbox', 'staging', 'production'];
+
 export default class MainContainer extends Component {
 	constructor (props) {
 		super(props);
 		this.state = {
 			isLoading: true,
 			pullRequest: {},
-			puppetComponents: {}
+			puppetComponents: []
 		};
 	}
 
@@ -27,7 +29,7 @@ export default class MainContainer extends Component {
 		if (pullRequest.number !== this.state.pullRequest.number) {
 			this.setState({
 				pullRequest: pullRequest,
-				puppetComponents: {}
+				puppetComponents: []
 			});
 			hashHistory.push(_.toString(pullRequest.number));
 		}
@@ -66,23 +68,13 @@ export default class MainContainer extends Component {
 
 		promise
 			.then(headSha => {
-				return Bluebird.all([
-					githubService.getPuppetComponents('testing', headSha),
-					githubService.getPuppetComponents('production', headSha),
-					githubService.getPuppetComponents('sandbox', headSha),
-					githubService.getPuppetComponents('smoketest', headSha),
-					githubService.getPuppetComponents('staging', headSha)
-				]);
+				return Bluebird.all(
+					ENVIRONMENTS.map(env => githubService.getPuppetComponents(env, headSha))
+				);
 			})
-			.spread((testing, production, sandbox, smoketest, staging) => {
+			.then(components => {
 				this.setState({
-					puppetComponents: {
-						testing,
-						smoketest,
-						sandbox,
-						staging,
-						production
-					},
+					puppetComponents: components,
 					isLoading: false
 				});
 			})
@@ -99,10 +91,8 @@ export default class MainContainer extends Component {
 				return <p>This PR was merged, so there is no diff to display</p>;
 			}
 
-			const environments = Object.keys(this.state.puppetComponents);
-			const componentNames = _.get(this.state.puppetComponents, 'testing', []).map(component => component.name);
-
-			const tableHead = environments.map(environment => {
+			const componentNames = _.get(this.state.puppetComponents, 0, []).map(component => component.name);
+			const tableHead = ENVIRONMENTS.map(environment => {
 				return [<td>{environment}</td>];
 			});
 
@@ -111,9 +101,11 @@ export default class MainContainer extends Component {
 					<tr key={name}>
 						<td><a href={getRepoUrl(name)}>{name}</a></td>
 						{
-							environments.map(environment => {
-								const component = _.find(this.state.puppetComponents[environment], {name: name});
-								return [<td><AheadByButton component={component} /> <BehindByButton component={component} /></td>];
+							ENVIRONMENTS.map((environment, i) => {
+								const testingComponent = _.find(this.state.puppetComponents[0], {name: name});
+								const component = _.find(this.state.puppetComponents[i], {name: name});
+								const isEqual = i !== 0 && _.isEqual(testingComponent, component);
+								return [<td className={isEqual ? 'identical' : ''}><AheadByButton component={component} /> <BehindByButton component={component} /></td>];
 							})
 						}
 					</tr>

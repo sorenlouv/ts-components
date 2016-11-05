@@ -58,6 +58,9 @@ table.overview {
                 background-color: green;
             }
 
+            &.identical {
+                opacity: 0.2;
+            }
         }
     }
 }
