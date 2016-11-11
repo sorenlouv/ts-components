@@ -2,32 +2,39 @@ import React from 'react';
 import _ from 'lodash';
 import githubService from '../services/github';
 
-function getBehindByUrl (component) {
-	return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.to + '...' + component.from;
+function getUrl (component, prop) {
+	return prop === 'ahead_by'
+		? 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to
+		: 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.to + '...' + component.from;
 }
 
-function getAheadByUrl (component) {
-	return 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.from + '...' + component.to;
-}
+function hasOnlyMergeCommits (component) {
+	if (_.size(_.get(component.diff, 'commits')) === 0) {
+		return false;
+	}
 
-export function BehindByButton ({component}) {
 	// Exclude diff if it only contains merge commits
-	const hasNonMergeCommits = _.get(component.diff, 'commits', [])
-		.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
-
-	if (!_.get(component.diff, 'ahead_by') > 0 || !hasNonMergeCommits) {
-		return null;
-	}
-
-	return <a className='diff-behind' href={getAheadByUrl(component)}>{component.diff.ahead_by} behind</a>;
+	return !component.diff.commits.some(commit => !commit.commit.message.match(/Merge pull request #\d+ from Tradeshift/));
 }
 
-export const AheadByButton = ({component}) => {
-	if (!_.get(component.diff, 'behind_by') > 0) {
+export function BehindByButton ({component, reverse}) {
+	const prop = reverse ? 'ahead_by' : 'behind_by';
+
+	if (!_.get(component.diff, prop) > 0 || hasOnlyMergeCommits(component)) {
 		return null;
 	}
 
-	return <a className='diff-ahead' href={getBehindByUrl(component)}>{component.diff.behind_by} ahead</a>;
+	return <a className='diff-behind' href={getUrl(component, prop)}>{component.diff[prop]} behind</a>;
+}
+
+export const AheadByButton = ({component, reverse}) => {
+	const prop = reverse ? 'behind_by' : 'ahead_by';
+
+	if (!_.get(component.diff, prop) > 0 || hasOnlyMergeCommits(component)) {
+		return null;
+	}
+
+	return <a className='diff-ahead' href={getUrl(component, prop)}>{component.diff[prop]} ahead</a>;
 };
 
 export const CopyButton = ({component}) => {

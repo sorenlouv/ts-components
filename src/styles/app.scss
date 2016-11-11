@@ -19,6 +19,55 @@ body {
     margin: 20px auto;
 }
 
+.diff-ahead, .diff-behind {
+    vertical-align: middle;
+    @include text-truncate;
+    display: inline-block;
+    border: 1px solid;
+    color: #fff;
+    margin: 3px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    &:hover {
+        text-decoration: none;
+        color: #fff;
+    }
+}
+
+.diff-explanation {
+    div {
+        height: 35px;
+        a {
+        }
+        p {
+            display: inline-block;
+            width: calc(100% - 130px);
+            margin: 0;
+            vertical-align: middle;
+            line-height: 14px;
+        }
+    }
+}
+
+$base-red: #d9534f;
+.diff-behind {
+    background-color: $base-red;
+    border-color: darken( $base-red, 10% );
+    &:hover {
+        background-color: darken( $base-red, 10% );
+        border-color: darken( $base-red, 20% );
+    }
+}
+
+$base-green: #4cae4c;
+.diff-ahead {
+    background-color: $base-green;
+    border-color: darken( $base-green, 10% );
+    &:hover {
+        background-color: darken( $base-green, 10% );
+        border-color: darken( $base-green, 20% );
+    }
+}
 
 table.overview {
     thead {
@@ -39,27 +88,8 @@ table.overview {
             border-right: 1px solid #ddd;
             padding: 3px 6px;
 
-            .diff-ahead, .diff-behind {
-                vertical-align: middle;
-                @include text-truncate;
-                display: inline-block;
-                color: white;
-                border: 1px solid #333;
-                margin: 3px;
-                padding: 3px 6px;
-                border-radius: 3px;
-            }
-
-            .diff-behind {
-                background-color: red;
-            }
-
-            .diff-ahead {
-                background-color: green;
-            }
-
             &.identical {
-                opacity: 0.2;
+                opacity: 0.3;
             }
         }
     }
@@ -77,9 +107,7 @@ table.overview {
     .title {
         display: inline-block;
         vertical-align: middle;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        @include text-truncate;
         width: calc(100% - 85px);
     }
 
