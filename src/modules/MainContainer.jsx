@@ -3,10 +3,12 @@ import _ from 'lodash';
 import Bluebird from 'bluebird';
 import { hashHistory } from 'react-router';
 import githubService from '../services/github';
+import Clipboard from 'clipboard';
+
 
 // Modules
 import PullRequestCompleter from './PullRequestCompleter.jsx';
-import { AheadByButton, BehindByButton } from './ComponentButtons.jsx';
+import { AheadByButton, BehindByButton, CopyButton } from './ComponentButtons.jsx';
 import SelectedPullRequest from './SelectedPullRequest.jsx';
 
 function getRepoUrl (name, sha = '') {
@@ -43,6 +45,7 @@ export default class MainContainer extends Component {
 	}
 
 	componentDidMount () {
+		new Clipboard('.btn-copy');
 		this.getPuppetComponents();
 	}
 
@@ -128,10 +131,13 @@ export default class MainContainer extends Component {
 								const reverseButton = !this.props.pullRequestNumber;
 								const testingComponent = _.find(this.state.puppetComponents[0], {name: name});
 								const component = _.find(this.state.puppetComponents[i], {name: name});
-								const isEqual = i !== 0 && _.isEqual(testingComponent, component);
-								return [<td className={isEqual ? 'identical' : ''}>
+								const isIdentical = i !== 0 && _.isEqual(testingComponent, component);
+								const isTesting = i === 0;
+
+								return [<td className={isIdentical ? 'identical' : ''}>
 									<AheadByButton component={component} reverse={reverseButton} />
 									<BehindByButton component={component} reverse={reverseButton} />
+									{isTesting ? <CopyButton component={component} reverse={reverseButton}/ > : null }
 								</td>];
 							})
 						}

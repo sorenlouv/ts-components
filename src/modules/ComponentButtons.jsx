@@ -8,6 +8,10 @@ function getUrl (component, prop) {
 		: 'https://github.com/Tradeshift/' + component.name + '/compare/' + component.to + '...' + component.from;
 }
 
+function hasChanges (component, prop) {
+	return _.get(component.diff, prop) > 0 && !hasOnlyMergeCommits(component);
+}
+
 function hasOnlyMergeCommits (component) {
 	if (_.size(_.get(component.diff, 'commits')) === 0) {
 		return false;
@@ -20,7 +24,7 @@ function hasOnlyMergeCommits (component) {
 export function BehindByButton ({component, reverse}) {
 	const prop = reverse ? 'ahead_by' : 'behind_by';
 
-	if (!_.get(component.diff, prop) > 0 || hasOnlyMergeCommits(component)) {
+	if (!hasChanges(component, prop)) {
 		return null;
 	}
 
@@ -29,20 +33,25 @@ export function BehindByButton ({component, reverse}) {
 
 export const AheadByButton = ({component, reverse}) => {
 	const prop = reverse ? 'behind_by' : 'ahead_by';
-
-	if (!_.get(component.diff, prop) > 0 || hasOnlyMergeCommits(component)) {
+	if (!hasChanges(component, prop)) {
 		return null;
 	}
 
 	return <a className='diff-ahead' href={getUrl(component, prop)}>{component.diff[prop]} ahead</a>;
 };
 
-export const CopyButton = ({component}) => {
+export const CopyButton = ({component, reverse}) => {
+	const aheadProp = reverse ? 'behind_by' : 'ahead_by';
+	const behindProp = reverse ? 'ahead_by' : 'behind_by';
+	if (!hasChanges(component, behindProp) || hasChanges(component, aheadProp)) {
+		return null;
+	}
+
 	return <button
 		type='button'
 		className='btn-copy btn btn-primary btn-sm'
 		data-clipboard-text={githubService.getShortlog(component.diff.commits)}>
-		Copy
+		<span className='glyphicon glyphicon glyphicon-copy' aria-hidden='true' />
 	</button>;
 };
 
