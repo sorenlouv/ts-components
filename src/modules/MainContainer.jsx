@@ -5,7 +5,6 @@ import { hashHistory } from 'react-router';
 import githubService from '../services/github';
 import Clipboard from 'clipboard';
 
-
 // Modules
 import PullRequestCompleter from './PullRequestCompleter.jsx';
 import { AheadByButton, BehindByButton, CopyButton } from './ComponentButtons.jsx';
@@ -15,7 +14,7 @@ function getRepoUrl (name, sha = '') {
 	return 'https://github.com/Tradeshift/' + name + '/commits/' + sha;
 }
 
-const ENVIRONMENTS = ['testing', 'smoketest', 'sandbox', 'staging', 'production'];
+const ENVIRONMENTS = ['testing', 'stable', 'production'];
 
 export default class MainContainer extends Component {
 	constructor (props) {
